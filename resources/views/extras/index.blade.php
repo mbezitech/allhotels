@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extras - Hotel Management</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        .header {
+            background: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-edit {
+            background: #3498db;
+            color: white;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-active { background: #d4edda; color: #155724; }
+        .badge-inactive { background: #f8d7da; color: #721c24; }
+        .category-badge {
+            background: #e0e0e0;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>POS Extras Management</h1>
+        <div>
+            <a href="{{ route('dashboard') }}" class="btn" style="background: #95a5a6; color: white; margin-right: 10px;">Dashboard</a>
+            <a href="{{ route('extras.create') }}" class="btn btn-primary">Add Extra</a>
+        </div>
+    </div>
+
+    <div class="container">
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-error">{{ session('error') }}</div>
+        @endif
+
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">All Extras</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Stock Tracked</th>
+                        <th>Current Stock</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($extras as $extra)
+                        <tr>
+                            <td><strong>{{ $extra->name }}</strong></td>
+                            <td><span class="category-badge">{{ ucfirst($extra->category) }}</span></td>
+                            <td>${{ number_format($extra->price, 2) }}</td>
+                            <td>{{ $extra->stock_tracked ? 'Yes' : 'No' }}</td>
+                            <td>
+                                @if($extra->stock_tracked)
+                                    @php
+                                        $stock = $extra->getStockBalance();
+                                        $isLow = $extra->isLowStock();
+                                    @endphp
+                                    <strong>{{ $stock }}</strong>
+                                    @if($isLow)
+                                        <span class="badge" style="background: #fff3cd; color: #856404; margin-left: 5px;">Low</span>
+                                    @endif
+                                @else
+                                    -
+                                @endif
+                            </td>
+                            <td>
+                                <span class="badge badge-{{ $extra->is_active ? 'active' : 'inactive' }}">
+                                    {{ $extra->is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ route('extras.edit', $extra) }}" class="btn btn-edit">Edit</a>
+                                <form action="{{ route('extras.destroy', $extra) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #999;">No extras found</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
+
