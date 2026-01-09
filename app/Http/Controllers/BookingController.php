@@ -20,22 +20,70 @@ class BookingController extends Controller
         $query = Booking::where('hotel_id', $hotelId)
             ->with(['room', 'createdBy.roles']);
 
+        // Search functionality
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('guest_name', 'like', "%{$search}%")
+                  ->orWhere('guest_email', 'like', "%{$search}%")
+                  ->orWhere('guest_phone', 'like', "%{$search}%")
+                  ->orWhere('booking_reference', 'like', "%{$search}%");
+            });
+        }
+
         // Filter by status
         if ($request->has('status') && $request->status) {
             $query->where('status', $request->status);
         }
 
-        // Filter by date range
-        if ($request->has('from_date') && $request->from_date) {
-            $query->where('check_in', '>=', $request->from_date);
-        }
-        if ($request->has('to_date') && $request->to_date) {
-            $query->where('check_out', '<=', $request->to_date);
+        // Filter by room
+        if ($request->has('room_id') && $request->room_id) {
+            $query->where('room_id', $request->room_id);
         }
 
-        $bookings = $query->orderBy('check_in', 'desc')->paginate(20);
+        // Filter by source
+        if ($request->has('source') && $request->source) {
+            $query->where('source', $request->source);
+        }
 
-        return view('bookings.index', compact('bookings'));
+        // Filter by check-in date range
+        if ($request->has('check_in_from') && $request->check_in_from) {
+            $query->where('check_in', '>=', $request->check_in_from);
+        }
+        if ($request->has('check_in_to') && $request->check_in_to) {
+            $query->where('check_in', '<=', $request->check_in_to);
+        }
+
+        // Filter by check-out date range
+        if ($request->has('check_out_from') && $request->check_out_from) {
+            $query->where('check_out', '>=', $request->check_out_from);
+        }
+        if ($request->has('check_out_to') && $request->check_out_to) {
+            $query->where('check_out', '<=', $request->check_out_to);
+        }
+
+        // Filter by booking date range (created_at)
+        if ($request->has('booking_date_from') && $request->booking_date_from) {
+            $query->whereDate('created_at', '>=', $request->booking_date_from);
+        }
+        if ($request->has('booking_date_to') && $request->booking_date_to) {
+            $query->whereDate('created_at', '<=', $request->booking_date_to);
+        }
+
+        // Sort order
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        $bookings = $query->paginate(20)->withQueryString();
+
+        // Get rooms for filter dropdown
+        $rooms = Room::where('hotel_id', $hotelId)
+            ->with('roomType')
+            ->orderBy('room_number')
+            ->get();
+
+        return view('bookings.index', compact('bookings', 'rooms'));
     }
 
     /**
@@ -147,6 +195,7 @@ class BookingController extends Controller
             'children' => 'nullable|integer|min:0',
             'total_amount' => 'required|numeric|min:0',
             'status' => 'required|in:pending,confirmed,checked_in,checked_out,cancelled',
+            'cancellation_reason' => 'required_if:status,cancelled|nullable|string|max:500',
             'notes' => 'nullable|string',
         ]);
 
@@ -162,6 +211,16 @@ class BookingController extends Controller
         $oldStatus = $booking->status;
         $oldValues = ['status' => $oldStatus];
         $newValues = ['status' => $validated['status']];
+        
+        // If cancelling and no reason provided, set default user cancellation reason
+        if ($validated['status'] === 'cancelled' && empty($validated['cancellation_reason'])) {
+            $validated['cancellation_reason'] = 'Cancelled by ' . auth()->user()->name . ' (' . now()->format('Y-m-d H:i') . ')';
+        }
+        
+        // If status is not cancelled, clear cancellation reason
+        if ($validated['status'] !== 'cancelled') {
+            $validated['cancellation_reason'] = null;
+        }
         
         $booking->update($validated);
         
@@ -183,6 +242,9 @@ class BookingController extends Controller
                         ['cleaning_status' => 'dirty']
                     );
                 }
+            } elseif ($validated['status'] === 'cancelled') {
+                $reason = $validated['cancellation_reason'] ?? 'No reason provided';
+                logActivity('cancelled', $booking, "Booking cancelled: {$booking->guest_name} - Reason: {$reason}", null, $oldValues, $newValues);
             } else {
                 logActivity('updated', $booking, "Booking status changed from {$oldStatus} to {$validated['status']} - Booking #{$booking->id}", null, $oldValues, $newValues);
             }

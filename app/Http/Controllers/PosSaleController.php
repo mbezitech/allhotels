@@ -21,7 +21,7 @@ class PosSaleController extends Controller
         $hotelId = session('hotel_id');
         
         $query = PosSale::where('hotel_id', $hotelId)
-            ->with('room', 'items.extra');
+            ->with('room', 'items.extra', 'user');
 
         // Filter by date
         if ($request->has('date') && $request->date) {
@@ -52,8 +52,17 @@ class PosSaleController extends Controller
             ->orderBy('category_id')
             ->orderBy('name')
             ->get()
+            ->map(function ($extra) use ($hotelId) {
+                // Add stock balance to each extra
+                $extra->current_stock = $extra->stock_tracked ? $extra->getStockBalance($hotelId) : null;
+                $extra->is_low_stock = $extra->isLowStock($hotelId);
+                return $extra;
+            })
             ->groupBy(function ($extra) {
-                return $extra->category ? $extra->category->name : 'Uncategorized';
+                if ($extra->category && is_object($extra->category)) {
+                    return $extra->category->name;
+                }
+                return 'Uncategorized';
             });
         
         $rooms = Room::where('hotel_id', $hotelId)
@@ -89,15 +98,32 @@ class PosSaleController extends Controller
             }
         }
 
-        // Filter out items with quantity 0 and calculate totals
+        // Filter out items with quantity 0, validate stock, and calculate totals
         $items = [];
         $totalAmount = 0;
-        foreach ($validated['items'] as $item) {
+        $stockErrors = [];
+        
+        foreach ($validated['items'] as $index => $item) {
             if (isset($item['quantity']) && $item['quantity'] > 0) {
+                $extra = Extra::findOrFail($item['extra_id']);
+                
+                // Validate stock availability if stock tracking is enabled
+                if ($extra->stock_tracked) {
+                    $currentStock = $extra->getStockBalance($hotelId);
+                    if ($currentStock < $item['quantity']) {
+                        $stockErrors[] = "{$extra->name}: Insufficient stock. Available: {$currentStock}, Requested: {$item['quantity']}";
+                        continue; // Skip this item
+                    }
+                }
+                
                 $subtotal = $item['quantity'] * $item['unit_price'];
                 $totalAmount += $subtotal;
                 $items[] = $item;
             }
+        }
+
+        if (!empty($stockErrors)) {
+            return back()->withErrors(['items' => $stockErrors])->withInput();
         }
 
         if (empty($items)) {
@@ -160,7 +186,7 @@ class PosSaleController extends Controller
     {
         $this->authorizeHotel($posSale);
         
-        $posSale->load('room', 'items.extra', 'payments');
+        $posSale->load('room', 'items.extra', 'payments', 'user');
         
         return view('pos-sales.show', compact('posSale'));
     }

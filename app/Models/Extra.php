@@ -14,14 +14,19 @@ class Extra extends Model
         'name',
         'description',
         'category_id',
+        'images',
         'price',
+        'cost',
+        'unit',
         'stock_tracked',
         'min_stock',
         'is_active',
     ];
 
     protected $casts = [
+        'images' => 'array',
         'price' => 'decimal:2',
+        'cost' => 'decimal:2',
         'stock_tracked' => 'boolean',
         'is_active' => 'boolean',
     ];
@@ -92,5 +97,29 @@ class Extra extends Model
         }
 
         return $this->getStockBalance($hotelId) <= $this->min_stock;
+    }
+
+    /**
+     * Calculate profit margin per unit
+     */
+    public function getProfitMarginAttribute(): ?float
+    {
+        if (!$this->cost || $this->cost <= 0) {
+            return null;
+        }
+
+        return $this->price - $this->cost;
+    }
+
+    /**
+     * Calculate profit margin percentage
+     */
+    public function getProfitMarginPercentAttribute(): ?float
+    {
+        if (!$this->cost || $this->cost <= 0) {
+            return null;
+        }
+
+        return round((($this->price - $this->cost) / $this->cost) * 100, 2);
     }
 }

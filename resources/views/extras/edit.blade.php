@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Extra')
-@section('page-title', 'Edit Extra')
+@section('title', 'Edit Product')
+@section('page-title', 'Edit Product')
 
 @push('styles')
 <style>
@@ -59,7 +59,7 @@
 
 @section('content')
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <form method="POST" action="{{ route('extras.update', $extra) }}">
+            <form method="POST" action="{{ route('extras.update', $extra) }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -92,6 +92,39 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="unit">Unit/Quantity *</label>
+                    @php
+                        $currentUnit = old('unit', $extra->unit ?? 'piece');
+                        $isCustom = !in_array($currentUnit, ['piece', 'bottle', 'can', 'pack', 'box', 'kg', 'g', 'liter', 'ml', 'hour', 'session']);
+                    @endphp
+                    <select id="unit" name="unit" required>
+                        <option value="piece" {{ $currentUnit == 'piece' && !$isCustom ? 'selected' : '' }}>Piece</option>
+                        <option value="bottle" {{ $currentUnit == 'bottle' ? 'selected' : '' }}>Bottle</option>
+                        <option value="can" {{ $currentUnit == 'can' ? 'selected' : '' }}>Can</option>
+                        <option value="pack" {{ $currentUnit == 'pack' ? 'selected' : '' }}>Pack</option>
+                        <option value="box" {{ $currentUnit == 'box' ? 'selected' : '' }}>Box</option>
+                        <option value="kg" {{ $currentUnit == 'kg' ? 'selected' : '' }}>Kilogram (kg)</option>
+                        <option value="g" {{ $currentUnit == 'g' ? 'selected' : '' }}>Gram (g)</option>
+                        <option value="liter" {{ $currentUnit == 'liter' ? 'selected' : '' }}>Liter</option>
+                        <option value="ml" {{ $currentUnit == 'ml' ? 'selected' : '' }}>Milliliter (ml)</option>
+                        <option value="hour" {{ $currentUnit == 'hour' ? 'selected' : '' }}>Hour</option>
+                        <option value="session" {{ $currentUnit == 'session' ? 'selected' : '' }}>Session</option>
+                        <option value="custom" {{ $isCustom ? 'selected' : '' }}>Custom</option>
+                    </select>
+                    <input type="text" id="unit_custom" name="unit_custom" value="{{ $isCustom ? $currentUnit : old('unit_custom') }}" placeholder="Enter custom unit" style="margin-top: 10px; display: {{ $isCustom ? 'block' : 'none' }};">
+                    @error('unit')
+                        <span class="error">{{ $message }}</span>
+                    @enderror
+                    <small style="color: #666; display: block; margin-top: 5px;">Select the unit of measurement for this product</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="cost">Cost (for profit calculation)</label>
+                    <input type="number" id="cost" name="cost" value="{{ old('cost', $extra->cost) }}" step="0.01" min="0">
+                    <small style="color: #666;">Optional: Enter product cost to track profit margins</small>
+                </div>
+
+                <div class="form-group">
                     <label for="description">Description</label>
                     <textarea id="description" name="description" rows="3">{{ old('description', $extra->description) }}</textarea>
                 </div>
@@ -116,10 +149,25 @@
                 </div>
 
                 <div style="margin-top: 30px;">
-                    <button type="submit" class="btn btn-primary">Update Extra</button>
+                    <button type="submit" class="btn btn-primary">Update Product</button>
                     <a href="{{ route('extras.index') }}" class="btn btn-secondary">Cancel</a>
                 </div>
             </form>
 </div>
+
+<script>
+    // Handle custom unit input
+    document.getElementById('unit').addEventListener('change', function() {
+        const customInput = document.getElementById('unit_custom');
+        if (this.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.required = true;
+        } else {
+            customInput.style.display = 'none';
+            customInput.required = false;
+            customInput.value = '';
+        }
+    });
+</script>
 @endsection
 

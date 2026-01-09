@@ -129,6 +129,7 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
         Route::post('/housekeeping-records/{housekeepingRecord}/start', [HousekeepingRecordController::class, 'startCleaning'])->name('housekeeping-records.start');
         Route::post('/housekeeping-records/{housekeepingRecord}/complete', [HousekeepingRecordController::class, 'completeCleaning'])->name('housekeeping-records.complete');
         Route::post('/housekeeping-records/{housekeepingRecord}/inspect', [HousekeepingRecordController::class, 'inspectCleaning'])->name('housekeeping-records.inspect');
+        Route::post('/housekeeping-records/{housekeepingRecord}/resolve', [HousekeepingRecordController::class, 'resolveIssue'])->name('housekeeping-records.resolve');
     });
     
     Route::middleware('permission:housekeeping.view')->group(function () {

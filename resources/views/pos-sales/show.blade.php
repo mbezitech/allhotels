@@ -68,38 +68,84 @@
             padding-top: 20px;
             border-top: 2px solid #333;
         }
+        @media print {
+            .header, .btn, .no-print {
+                display: none !important;
+            }
+            .card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+            body {
+                background: white;
+            }
+        }
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+        .receipt-header h2 {
+            margin-bottom: 10px;
+        }
+        .receipt-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>POS Sale Details</h1>
-        <div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="window.print()" class="btn" style="background: #667eea; color: white;">Print Receipt</button>
             <a href="{{ route('pos-sales.index') }}" class="btn">Back to Sales</a>
         </div>
     </div>
 
     <div class="container">
         <div class="card">
-            <h2 style="margin-bottom: 20px;">Sale Information</h2>
-            <div style="margin-bottom: 15px;">
-                <strong>Date:</strong> {{ $posSale->sale_date->format('M d, Y') }}
+            <div class="receipt-header">
+                <h2>{{ $posSale->hotel->name ?? 'Hotel' }}</h2>
+                <div style="color: #666; font-size: 14px;">Point of Sale Receipt</div>
+                <div style="color: #666; font-size: 12px; margin-top: 5px;">Reference: {{ $posSale->sale_reference }}</div>
             </div>
-            @if($posSale->room)
-                <div style="margin-bottom: 15px;">
-                    <strong>Room:</strong> {{ $posSale->room->room_number }}
+            
+            <div class="receipt-info">
+                <div>
+                    <strong>Date:</strong> {{ $posSale->sale_date->format('M d, Y') }}<br>
+                    <strong>Time:</strong> {{ $posSale->created_at->format('h:i A') }}
                 </div>
-            @endif
-            <div style="margin-bottom: 15px;">
-                <strong>Payment Status:</strong> {{ ucfirst($posSale->payment_status) }}
+                <div>
+                    @if($posSale->room)
+                        <strong>Room:</strong> {{ $posSale->room->room_number }}<br>
+                    @endif
+                    <strong>Staff:</strong> {{ $posSale->user->name ?? 'N/A' }}
+                </div>
             </div>
-            <div style="margin-bottom: 15px;">
-                <strong>Total Paid:</strong> ${{ number_format($posSale->total_paid, 2) }}
+            
+            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span><strong>Payment Status:</strong></span>
+                    <span>{{ ucfirst($posSale->payment_status) }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span><strong>Total Paid:</strong></span>
+                    <span>${{ number_format($posSale->total_paid, 2) }}</span>
+                </div>
+                @if($posSale->outstanding_balance > 0)
+                    <div style="display: flex; justify-content: space-between;">
+                        <span><strong>Outstanding Balance:</strong></span>
+                        <span style="color: #dc3545;">${{ number_format($posSale->outstanding_balance, 2) }}</span>
+                    </div>
+                @endif
             </div>
-            <div style="margin-bottom: 15px;">
-                <strong>Outstanding Balance:</strong> ${{ number_format($posSale->outstanding_balance, 2) }}
-            </div>
+            
             @if($posSale->notes)
-                <div style="margin-bottom: 15px;">
+                <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;">
                     <strong>Notes:</strong> {{ $posSale->notes }}
                 </div>
             @endif

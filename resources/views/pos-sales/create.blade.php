@@ -79,16 +79,60 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px;
+        padding: 15px;
         border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        margin-bottom: 10px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        transition: all 0.2s;
     }
     .extra-item:hover {
         background: #f8f9fa;
+        border-color: #667eea;
+    }
+    .extra-item-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex: 1;
+    }
+    .extra-item-image {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid #e0e0e0;
+    }
+    .extra-item-details {
+        flex: 1;
+    }
+    .extra-item-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    .extra-item-price {
+        color: #667eea;
+        font-weight: 600;
+        font-size: 16px;
+    }
+    .extra-item-stock {
+        font-size: 12px;
+        color: #666;
+        margin-top: 3px;
+    }
+    .stock-low {
+        color: #dc3545;
+        font-weight: 600;
     }
     input[type="number"] {
         width: 80px;
+        padding: 8px;
+        text-align: center;
+    }
+    .quantity-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 </style>
 @endpush
@@ -130,19 +174,37 @@
                         <div class="category-title">{{ ucfirst($category) }}</div>
                         @foreach($items as $extra)
                             <div class="extra-item">
-                                <div>
-                                    <strong>{{ $extra->name }}</strong>
-                                    <div style="color: #666; font-size: 12px;">${{ number_format($extra->price, 2) }}</div>
+                                <div class="extra-item-info">
+                                    @if($extra->images && count($extra->images) > 0)
+                                        <img src="{{ Storage::url($extra->images[0]) }}" alt="{{ $extra->name }}" class="extra-item-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\'%3E%3Crect fill=\'%23e0e0e0\' width=\'60\' height=\'60\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\' font-size=\'10\'%3ENo Image%3C/text%3E%3C/svg%3E'">
+                                    @else
+                                        <div style="width: 60px; height: 60px; background: #e0e0e0; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 10px;">No Image</div>
+                                    @endif
+                                    <div class="extra-item-details">
+                                        <div class="extra-item-name">{{ $extra->name }}</div>
+                                        <div class="extra-item-price">${{ number_format($extra->price, 2) }}</div>
+                                        @if($extra->stock_tracked)
+                                            <div class="extra-item-stock {{ $extra->is_low_stock ? 'stock-low' : '' }}">
+                                                Stock: {{ $extra->current_stock ?? 0 }}
+                                                @if($extra->is_low_stock)
+                                                    ⚠️ Low Stock
+                                                @endif
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="quantity-controls">
+                                    <button type="button" onclick="decreaseQuantity({{ $extra->id }})" style="padding: 5px 10px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer;">-</button>
                                     <input type="number" 
                                            name="items[{{ $extra->id }}][quantity]" 
+                                           id="qty-{{ $extra->id }}"
                                            value="0" 
                                            min="0" 
                                            class="item-quantity"
                                            data-extra-id="{{ $extra->id }}"
                                            data-price="{{ $extra->price }}"
                                            onchange="updateCart()">
+                                    <button type="button" onclick="increaseQuantity({{ $extra->id }})" style="padding: 5px 10px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; cursor: pointer;">+</button>
                                     <input type="hidden" name="items[{{ $extra->id }}][extra_id]" value="{{ $extra->id }}">
                                     <input type="hidden" name="items[{{ $extra->id }}][unit_price]" value="{{ $extra->price }}" class="unit-price-{{ $extra->id }}">
                                 </div>
@@ -161,8 +223,9 @@
                         <span id="subtotal">$0.00</span>
                     </div>
                     <div class="form-group" style="margin-bottom: 10px;">
-                        <label for="discount">Discount</label>
-                        <input type="number" id="discount" name="discount" value="0" step="0.01" min="0" onchange="updateCart()">
+                        <label for="discount">Discount ($)</label>
+                        <input type="number" id="discount" name="discount" value="0" step="0.01" min="0" onchange="updateCart()" placeholder="0.00">
+                        <small style="color: #666;">Enter discount amount in dollars</small>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold;">
                         <span>Total:</span>
@@ -181,6 +244,22 @@
 
 @push('scripts')
 <script>
+        function increaseQuantity(extraId) {
+            const input = document.getElementById('qty-' + extraId);
+            const currentValue = parseInt(input.value) || 0;
+            input.value = currentValue + 1;
+            updateCart();
+        }
+        
+        function decreaseQuantity(extraId) {
+            const input = document.getElementById('qty-' + extraId);
+            const currentValue = parseInt(input.value) || 0;
+            if (currentValue > 0) {
+                input.value = currentValue - 1;
+                updateCart();
+            }
+        }
+        
         function updateCart() {
             const quantities = document.querySelectorAll('.item-quantity');
             const cartItems = document.getElementById('cartItems');

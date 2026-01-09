@@ -187,16 +187,16 @@
                 @endif
 
                 @if(auth()->user()->hasPermission('pos.view') || auth()->user()->isSuperAdmin())
-                    <li class="nav-section">POS & Stock</li>
+                    <li class="nav-section">Products & POS</li>
                     <li class="nav-item">
                         <a href="{{ route('extras.index') }}" class="nav-link {{ request()->routeIs('extras.*') ? 'active' : '' }}">
-                            Extras
+                            Products
                         </a>
                     </li>
                     @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
                         <li class="nav-item">
                             <a href="{{ route('extra-categories.index') }}" class="nav-link {{ request()->routeIs('extra-categories.*') ? 'active' : '' }}">
-                                Categories
+                                Product Categories
                             </a>
                         </li>
                     @endif
@@ -207,7 +207,7 @@
                     </li>
                     <li class="nav-item">
                         <a href="{{ route('stock-movements.index') }}" class="nav-link {{ request()->routeIs('stock-movements.*') ? 'active' : '' }}">
-                            Stock
+                            Stock Movements
                         </a>
                     </li>
                 @endif

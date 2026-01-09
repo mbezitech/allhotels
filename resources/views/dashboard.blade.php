@@ -139,20 +139,44 @@
     <!-- Recent Bookings -->
     <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="color: #333; font-size: 18px;">Recent Bookings</h3>
+            <h3 style="color: #333; font-size: 18px;">Bookings</h3>
             <a href="{{ route('bookings.index') }}" style="color: #667eea; text-decoration: none; font-size: 14px;">View All</a>
+        </div>
+        
+        <!-- Booking Filters -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <a href="{{ route('dashboard', ['booking_filter' => 'all']) }}" 
+               style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; {{ ($bookingFilter ?? 'all') === 'all' ? 'background: #667eea; color: white;' : 'background: #f8f9fa; color: #333;' }}">
+                All ({{ $allBookings ?? 0 }})
+            </a>
+            <a href="{{ route('dashboard', ['booking_filter' => 'pending']) }}" 
+               style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; {{ ($bookingFilter ?? 'all') === 'pending' ? 'background: #ffc107; color: #333;' : 'background: #f8f9fa; color: #333;' }}">
+                Pending ({{ $pendingBookings ?? 0 }})
+            </a>
+            <a href="{{ route('dashboard', ['booking_filter' => 'cancelled']) }}" 
+               style="padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; {{ ($bookingFilter ?? 'all') === 'cancelled' ? 'background: #dc3545; color: white;' : 'background: #f8f9fa; color: #333;' }}">
+                Cancelled ({{ $cancelledBookings ?? 0 }})
+            </a>
         </div>
         @if($recentBookings->count() > 0)
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 @foreach($recentBookings as $booking)
-                    <div style="padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid {{ $booking->status === 'cancelled' ? '#dc3545' : ($booking->status === 'pending' ? '#ffc107' : '#667eea') }};">
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 5px;">
                             <div>
                                 <div style="font-weight: 500; color: #333;">{{ $booking->guest_name }}</div>
                                 <div style="font-size: 12px; color: #999;">Room {{ $booking->room->room_number }}</div>
+                                <div style="font-size: 11px; color: #999; margin-top: 2px;">
+                                    Booked: {{ $booking->created_at->format('M d, Y h:i A') }}
+                                </div>
+                                @if($booking->status === 'cancelled' && $booking->cancellation_reason)
+                                    <div style="font-size: 11px; color: #dc3545; margin-top: 4px;">
+                                        <strong>Reason:</strong> {{ $booking->cancellation_reason }}
+                                    </div>
+                                @endif
                             </div>
-                            <span style="font-size: 12px; padding: 4px 8px; background: #e3f2fd; color: #1976d2; border-radius: 4px;">
-                                {{ ucfirst($booking->status) }}
+                            <span style="font-size: 12px; padding: 4px 8px; background: {{ $booking->status === 'cancelled' ? '#f8d7da' : ($booking->status === 'pending' ? '#fff3cd' : '#e3f2fd') }}; color: {{ $booking->status === 'cancelled' ? '#721c24' : ($booking->status === 'pending' ? '#856404' : '#1976d2') }}; border-radius: 4px;">
+                                {{ ucfirst(str_replace('_', ' ', $booking->status)) }}
                             </span>
                         </div>
                         <div style="font-size: 12px; color: #666;">

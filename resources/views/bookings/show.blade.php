@@ -144,9 +144,28 @@
     </div>
 
     <div class="info-row">
+        <span class="info-label">Booking Date/Time:</span>
+        <span class="info-value">
+            {{ $booking->created_at->format('M d, Y') }} at {{ $booking->created_at->format('h:i A') }}
+        </span>
+    </div>
+
+    <div class="info-row">
         <span class="info-label">Status:</span>
         <span class="info-value">{{ ucfirst(str_replace('_', ' ', $booking->status)) }}</span>
     </div>
+
+    @if($booking->status === 'cancelled' && $booking->cancellation_reason)
+    <div class="info-row">
+        <span class="info-label">Cancellation Reason:</span>
+        <span class="info-value" style="color: #dc3545;">
+            {{ $booking->cancellation_reason }}
+            @if(str_starts_with($booking->cancellation_reason, 'System:'))
+                <span style="font-size: 11px; color: #999; margin-left: 5px;">(Auto-cancelled)</span>
+            @endif
+        </span>
+    </div>
+    @endif
 
     <div class="info-row">
         <span class="info-label">Source:</span>
@@ -190,7 +209,11 @@
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="color: #333; font-size: 20px;">Payments</h3>
-        @if($booking->outstanding_balance > 0 && (auth()->user()->hasPermission('payments.create') || auth()->user()->isSuperAdmin()))
+        @if(
+            $booking->status !== 'cancelled' &&
+            $booking->outstanding_balance > 0 &&
+            (auth()->user()->hasPermission('payments.create') || auth()->user()->isSuperAdmin())
+        )
             <a href="{{ route('payments.create', ['booking_id' => $booking->id]) }}" class="btn btn-primary">Add Payment</a>
         @endif
     </div>

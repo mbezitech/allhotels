@@ -16,7 +16,7 @@ class DashboardController extends Controller
     /**
      * Display the dashboard
      */
-    public function index()
+    public function index(Request $request)
     {
         $hotelId = session('hotel_id');
         $user = Auth::user();
@@ -57,6 +57,9 @@ class DashboardController extends Controller
                 'todayPayments',
                 'recentBookings',
                 'pendingBookings',
+                'cancelledBookings',
+                'allBookings',
+                'bookingFilter',
                 'calendar',
                 'month',
                 'year',
@@ -106,17 +109,37 @@ class DashboardController extends Controller
             ->whereDate('paid_at', $today)
             ->sum('amount');
 
-        // Recent bookings
-        $recentBookings = Booking::where('hotel_id', $hotelId)
-            ->with('room')
+        // Get booking filter from request
+        $bookingFilter = $request->get('booking_filter', 'all'); // all, pending, cancelled
+        
+        // Recent bookings with filter
+        $recentBookingsQuery = Booking::where('hotel_id', $hotelId)
+            ->with('room', 'createdBy');
+        
+        if ($bookingFilter === 'pending') {
+            $recentBookingsQuery->where('status', 'pending');
+        } elseif ($bookingFilter === 'cancelled') {
+            $recentBookingsQuery->where('status', 'cancelled');
+        }
+        // 'all' shows all bookings
+        
+        $recentBookings = $recentBookingsQuery
             ->orderBy('created_at', 'desc')
-            ->limit(5)
+            ->limit(10)
             ->get();
 
-        // Pending bookings
+        // Pending bookings count
         $pendingBookings = Booking::where('hotel_id', $hotelId)
             ->where('status', 'pending')
             ->count();
+        
+        // Cancelled bookings count
+        $cancelledBookings = Booking::where('hotel_id', $hotelId)
+            ->where('status', 'cancelled')
+            ->count();
+        
+        // All bookings count
+        $allBookings = Booking::where('hotel_id', $hotelId)->count();
 
         // Calendar data for current month
         $month = now()->month;
@@ -212,6 +235,9 @@ class DashboardController extends Controller
             'todayPayments',
             'recentBookings',
             'pendingBookings',
+            'cancelledBookings',
+            'allBookings',
+            'bookingFilter',
             'calendar',
             'month',
             'year',

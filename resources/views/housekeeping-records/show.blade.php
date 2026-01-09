@@ -107,10 +107,39 @@
     @endif
 
     @if($housekeepingRecord->has_issues && $housekeepingRecord->issues_found)
-        <div class="issues-box">
-            <strong style="color: #856404;">⚠️ Issues Found:</strong>
-            <p style="margin-top: 10px; color: #856404;">{{ $housekeepingRecord->issues_found }}</p>
+        <div class="issues-box" style="{{ $housekeepingRecord->issue_resolved ? 'background: #d4edda; border-left-color: #28a745;' : '' }}">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <strong style="color: {{ $housekeepingRecord->issue_resolved ? '#155724' : '#856404' }};">
+                    {{ $housekeepingRecord->issue_resolved ? '✓' : '⚠️' }} Issues Found:
+                </strong>
+                @if($housekeepingRecord->issue_resolved)
+                    <span style="background: #d4edda; color: #155724; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                        Resolved
+                    </span>
+                @else
+                    <span style="background: #f8d7da; color: #721c24; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                        Unresolved
+                    </span>
+                @endif
+            </div>
+            <p style="margin-top: 10px; color: {{ $housekeepingRecord->issue_resolved ? '#155724' : '#856404' }};">{{ $housekeepingRecord->issues_found }}</p>
+            
+            @if($housekeepingRecord->issue_resolved)
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #c3e6cb;">
+                    <strong style="color: #155724;">Resolution Notes:</strong>
+                    <p style="margin-top: 10px; color: #155724;">{{ $housekeepingRecord->issue_resolution_notes }}</p>
+                    <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                        Resolved by {{ $housekeepingRecord->issueResolvedBy->name ?? 'Unknown' }} on {{ $housekeepingRecord->issue_resolved_at->format('M d, Y H:i') }}
+                    </div>
+                </div>
+            @endif
         </div>
+        
+        @if(!$housekeepingRecord->issue_resolved && (auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin()))
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
+                <button onclick="showResolveModal({{ $housekeepingRecord->id }})" class="btn" style="background: #28a745; color: white;">Resolve Issue</button>
+            </div>
+        @endif
     @endif
 
     <div class="info-row">
@@ -150,5 +179,51 @@
         </div>
     @endif
 </div>
+
+<!-- Resolve Issue Modal -->
+@if($housekeepingRecord->has_issues && !$housekeepingRecord->issue_resolved)
+<div id="resolveModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <h3 style="color: #333; font-size: 20px; margin-bottom: 20px;">Resolve Issue</h3>
+        <form id="resolveForm" method="POST" action="{{ route('housekeeping-records.resolve', $housekeepingRecord) }}">
+            @csrf
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Resolution Notes *</label>
+                <textarea 
+                    name="issue_resolution_notes" 
+                    rows="5" 
+                    required 
+                    minlength="10"
+                    placeholder="Describe how the issue was resolved, what actions were taken, etc. (minimum 10 characters)"
+                    style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit;"
+                ></textarea>
+                <small style="color: #666; font-size: 12px;">Please provide detailed notes about how the issue was resolved.</small>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeResolveModal()" style="padding: 10px 20px; background: #95a5a6; color: white; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+                <button type="submit" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">Resolve Issue</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function showResolveModal(recordId) {
+        document.getElementById('resolveModal').style.display = 'flex';
+    }
+
+    function closeResolveModal() {
+        document.getElementById('resolveModal').style.display = 'none';
+        document.getElementById('resolveForm').reset();
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('resolveModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeResolveModal();
+        }
+    });
+</script>
+@endif
 @endsection
 

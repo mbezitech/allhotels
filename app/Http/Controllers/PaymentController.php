@@ -107,6 +107,13 @@ class PaymentController extends Controller
             if ($booking->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this booking.');
             }
+
+            // Do not allow payments on cancelled bookings
+            if ($booking->status === 'cancelled') {
+                return back()->withErrors([
+                    'booking_id' => 'Cannot add a payment to a cancelled booking.',
+                ])->withInput();
+            }
             
             // Check if payment exceeds outstanding balance
             if ($validated['amount'] > $booking->outstanding_balance) {

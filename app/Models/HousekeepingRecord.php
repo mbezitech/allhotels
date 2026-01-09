@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Auth;
 
 class HousekeepingRecord extends Model
 {
@@ -19,6 +20,10 @@ class HousekeepingRecord extends Model
         'notes',
         'issues_found',
         'has_issues',
+        'issue_resolved',
+        'issue_resolved_at',
+        'issue_resolved_by',
+        'issue_resolution_notes',
         'inspected_by',
         'inspected_at',
     ];
@@ -27,7 +32,9 @@ class HousekeepingRecord extends Model
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'inspected_at' => 'datetime',
+        'issue_resolved_at' => 'datetime',
         'has_issues' => 'boolean',
+        'issue_resolved' => 'boolean',
     ];
 
     /**
@@ -68,6 +75,14 @@ class HousekeepingRecord extends Model
     public function inspectedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'inspected_by');
+    }
+
+    /**
+     * Get the user who resolved the issue
+     */
+    public function issueResolvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'issue_resolved_by');
     }
 
     /**
@@ -156,6 +171,23 @@ class HousekeepingRecord extends Model
                     $record,
                     "Issues/damages reported for {$location}",
                     ['issues' => $record->issues_found]
+                );
+            }
+
+            // Log issue resolution
+            if ($record->isDirty('issue_resolved') && $record->issue_resolved) {
+                $location = $record->room ? "Room {$record->room->room_number}" : ($record->area ? $record->area->name : 'Unknown');
+                $resolvedByName = $record->issueResolvedBy ? $record->issueResolvedBy->name : Auth::user()->name ?? 'Unknown';
+                logActivity(
+                    'issue_resolved',
+                    $record,
+                    "Issues resolved for {$location}",
+                    [
+                        'resolved_by' => $resolvedByName,
+                        'resolution_notes' => $record->issue_resolution_notes
+                    ],
+                    ['issue_resolved' => false],
+                    ['issue_resolved' => true, 'issue_resolved_at' => $record->issue_resolved_at]
                 );
             }
         });

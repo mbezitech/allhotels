@@ -73,6 +73,26 @@
             gap: 20px;
         }
     </style>
+    <script>
+        function toggleCancellationReason() {
+            const status = document.getElementById('status').value;
+            const reasonGroup = document.getElementById('cancellation_reason_group');
+            const reasonField = document.getElementById('cancellation_reason');
+            
+            if (status === 'cancelled') {
+                reasonGroup.style.display = 'block';
+                reasonField.required = true;
+            } else {
+                reasonGroup.style.display = 'none';
+                reasonField.required = false;
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleCancellationReason();
+        });
+    </script>
 </head>
 <body>
     <div class="header">
@@ -143,13 +163,30 @@
 
                 <div class="form-group">
                     <label for="status">Status *</label>
-                    <select id="status" name="status" required>
+                    <select id="status" name="status" required onchange="toggleCancellationReason()">
                         <option value="pending" {{ old('status', $booking->status) == 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="confirmed" {{ old('status', $booking->status) == 'confirmed' ? 'selected' : '' }}>Confirmed</option>
                         <option value="checked_in" {{ old('status', $booking->status) == 'checked_in' ? 'selected' : '' }}>Checked In</option>
                         <option value="checked_out" {{ old('status', $booking->status) == 'checked_out' ? 'selected' : '' }}>Checked Out</option>
                         <option value="cancelled" {{ old('status', $booking->status) == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                     </select>
+                </div>
+
+                <div class="form-group" id="cancellation_reason_group" style="display: {{ old('status', $booking->status) == 'cancelled' ? 'block' : 'none' }};">
+                    <label for="cancellation_reason">Cancellation Reason *</label>
+                    <textarea id="cancellation_reason" name="cancellation_reason" rows="3" placeholder="Please provide a reason for cancellation...">{{ old('cancellation_reason', $booking->cancellation_reason) }}</textarea>
+                    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                        @if($booking->cancellation_reason && str_starts_with($booking->cancellation_reason, 'System:'))
+                            Current reason: {{ $booking->cancellation_reason }} (System cancelled)
+                        @elseif($booking->cancellation_reason)
+                            Current reason: {{ $booking->cancellation_reason }}
+                        @else
+                            Required when cancelling a booking
+                        @endif
+                    </small>
+                    @error('cancellation_reason')
+                        <span class="error">{{ $message }}</span>
+                    @enderror
                 </div>
 
                 <div class="form-group">

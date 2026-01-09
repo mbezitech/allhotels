@@ -11,6 +11,8 @@ class PosSale extends Model
     protected $fillable = [
         'hotel_id',
         'room_id',
+        'sale_reference',
+        'user_id',
         'sale_date',
         'total_amount',
         'discount',
@@ -40,6 +42,14 @@ class PosSale extends Model
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
+    }
+
+    /**
+     * Get the user who created this sale
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class);
     }
 
     /**
@@ -98,5 +108,52 @@ class PosSale extends Model
         }
         
         $this->save();
+    }
+
+    /**
+     * Generate unique sale reference
+     */
+    public static function generateSaleReference(): string
+    {
+        do {
+            $reference = 'POS' . strtoupper(substr(uniqid(), -8)) . rand(1000, 9999);
+        } while (self::where('sale_reference', $reference)->exists());
+        
+        return $reference;
+    }
+
+    /**
+     * Calculate total profit for this sale
+     */
+    public function getTotalProfitAttribute(): float
+    {
+        $totalProfit = 0;
+        
+        foreach ($this->items as $item) {
+            $extra = $item->extra;
+            if ($extra && $extra->cost) {
+                $profitPerUnit = $item->unit_price - $extra->cost;
+                $totalProfit += $profitPerUnit * $item->quantity;
+            }
+        }
+        
+        return round($totalProfit, 2);
+    }
+
+    /**
+     * Boot method to auto-generate sale reference
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($sale) {
+            if (empty($sale->sale_reference)) {
+                $sale->sale_reference = self::generateSaleReference();
+            }
+            if (empty($sale->user_id) && auth()->check()) {
+                $sale->user_id = auth()->id();
+            }
+        });
     }
 }

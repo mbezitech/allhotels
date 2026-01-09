@@ -24,6 +24,7 @@ class Booking extends Model
         'status',
         'source',
         'created_by',
+        'cancellation_reason',
         'notes',
     ];
 
@@ -206,6 +207,7 @@ class Booking extends Model
         foreach ($stale as $booking) {
             $oldStatus = $booking->status;
             $booking->status = 'cancelled';
+            $booking->cancellation_reason = 'System: Pending payment timeout (10 minutes)';
             $booking->save();
             $count++;
 

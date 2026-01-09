@@ -391,6 +391,48 @@ class HousekeepingRecordController extends Controller
     }
 
     /**
+     * Resolve issues for a housekeeping record
+     */
+    public function resolveIssue(Request $request, HousekeepingRecord $housekeepingRecord)
+    {
+        $this->authorizeHotel($housekeepingRecord);
+
+        // Only allow resolving if there are issues
+        if (!$housekeepingRecord->has_issues || empty($housekeepingRecord->issues_found)) {
+            return back()->with('error', 'This record has no issues to resolve.');
+        }
+
+        $validated = $request->validate([
+            'issue_resolution_notes' => 'required|string|min:10',
+        ]);
+
+        $housekeepingRecord->update([
+            'issue_resolved' => true,
+            'issue_resolved_at' => now(),
+            'issue_resolved_by' => Auth::id(),
+            'issue_resolution_notes' => $validated['issue_resolution_notes'],
+        ]);
+
+        $location = $housekeepingRecord->room 
+            ? "Room {$housekeepingRecord->room->room_number}" 
+            : ($housekeepingRecord->area ? $housekeepingRecord->area->name : 'Unknown');
+
+        logActivity(
+            'issue_resolved',
+            $housekeepingRecord,
+            "Issues resolved for {$location}",
+            [
+                'resolved_by' => Auth::user()->name,
+                'resolution_notes' => $validated['issue_resolution_notes']
+            ],
+            ['issue_resolved' => false],
+            ['issue_resolved' => true, 'issue_resolved_at' => now()]
+        );
+
+        return back()->with('success', 'Issues resolved successfully.');
+    }
+
+    /**
      * Remove the specified housekeeping record
      */
     public function destroy(HousekeepingRecord $housekeepingRecord)

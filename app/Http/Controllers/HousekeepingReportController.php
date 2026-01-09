@@ -220,16 +220,25 @@ class HousekeepingReportController extends Controller
             abort(403, 'Unauthorized access.');
         }
 
-        $issues = HousekeepingRecord::where('hotel_id', $selectedHotelId)
+        $query = HousekeepingRecord::where('hotel_id', $selectedHotelId)
             ->where('has_issues', true)
             ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->with('room', 'area', 'assignedTo')
-            ->orderBy('created_at', 'desc')
-            ->get();
+            ->with('room', 'area', 'assignedTo', 'issueResolvedBy');
+
+        // Filter by resolution status
+        $resolutionFilter = $request->get('resolution_status', 'all');
+        if ($resolutionFilter === 'resolved') {
+            $query->where('issue_resolved', true);
+        } elseif ($resolutionFilter === 'unresolved') {
+            $query->where('issue_resolved', false)->orWhereNull('issue_resolved');
+        }
+        // 'all' shows both resolved and unresolved
+
+        $issues = $query->orderBy('created_at', 'desc')->get();
 
         $hotels = $isSuperAdmin ? Hotel::all() : collect([Hotel::find($hotelId)]);
 
-        return view('housekeeping-reports.issues', compact('issues', 'dateFrom', 'dateTo', 'hotels', 'selectedHotelId', 'isSuperAdmin'));
+        return view('housekeeping-reports.issues', compact('issues', 'dateFrom', 'dateTo', 'hotels', 'selectedHotelId', 'isSuperAdmin', 'resolutionFilter'));
     }
 
     /**
