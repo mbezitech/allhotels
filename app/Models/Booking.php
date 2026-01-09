@@ -11,6 +11,7 @@ class Booking extends Model
     protected $fillable = [
         'hotel_id',
         'room_id',
+        'booking_reference',
         'guest_name',
         'guest_email',
         'guest_phone',
@@ -83,5 +84,86 @@ class Booking extends Model
     public function isFullyPaid(): bool
     {
         return $this->outstanding_balance <= 0;
+    }
+
+    /**
+     * Generate unique booking reference
+     */
+    public static function generateBookingReference(): string
+    {
+        do {
+            $reference = 'BK' . strtoupper(substr(uniqid(), -8)) . rand(1000, 9999);
+        } while (self::where('booking_reference', $reference)->exists());
+        
+        return $reference;
+    }
+
+    /**
+     * Boot method to auto-generate booking reference and update room status
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($booking) {
+            if (empty($booking->booking_reference)) {
+                $booking->booking_reference = self::generateBookingReference();
+            }
+        });
+
+        static::created(function ($booking) {
+            // Log booking creation
+            $isPublic = request()->routeIs('public.booking.*');
+            $roomNumber = $booking->room ? $booking->room->room_number : 'N/A';
+            logActivity(
+                'created',
+                $booking,
+                $isPublic 
+                    ? "Guest booking created: {$booking->guest_name} - Room {$roomNumber}"
+                    : "Booking created: {$booking->guest_name} - Room {$roomNumber}",
+                ['booking_reference' => $booking->booking_reference, 'is_guest_booking' => $isPublic]
+            );
+        });
+
+        // Auto-update room cleaning status when booking is checked out
+        static::updating(function ($booking) {
+            $oldStatus = $booking->getOriginal('status');
+            $newStatus = $booking->status;
+            
+            // Log status changes
+            if ($booking->isDirty('status')) {
+                $oldValues = ['status' => $oldStatus];
+                $newValues = ['status' => $newStatus];
+                
+                if ($newStatus === 'checked_in') {
+                    $roomNumber = $booking->room ? $booking->room->room_number : 'N/A';
+                    logActivity('checked_in', $booking, "Guest checked in: {$booking->guest_name} - Room {$roomNumber}", null, $oldValues, $newValues);
+                } elseif ($newStatus === 'checked_out') {
+                    $roomNumber = $booking->room ? $booking->room->room_number : 'N/A';
+                    logActivity('checked_out', $booking, "Guest checked out: {$booking->guest_name} - Room {$roomNumber}", null, $oldValues, $newValues);
+                    
+                    // Auto-update room cleaning status
+                    $room = $booking->room;
+                    if ($room) {
+                        $oldRoomStatus = $room->cleaning_status;
+                        $room->cleaning_status = 'dirty';
+                        $room->save();
+                        
+                        // Log room cleaning status change (system action)
+                        logSystemActivity(
+                            'room_cleaning_status_changed',
+                            $room,
+                            "Room {$room->room_number} automatically marked as DIRTY after checkout",
+                            null,
+                            ['cleaning_status' => $oldRoomStatus],
+                            ['cleaning_status' => 'dirty']
+                        );
+                    }
+                } else {
+                    // Other status changes
+                    logActivity('updated', $booking, "Booking status changed from {$oldStatus} to {$newStatus} for {$booking->guest_name}", null, $oldValues, $newValues);
+                }
+            }
+        });
     }
 }

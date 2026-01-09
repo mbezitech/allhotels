@@ -13,7 +13,7 @@ class Extra extends Model
         'hotel_id',
         'name',
         'description',
-        'category',
+        'category_id',
         'price',
         'stock_tracked',
         'min_stock',
@@ -32,6 +32,14 @@ class Extra extends Model
     public function hotel(): BelongsTo
     {
         return $this->belongsTo(Hotel::class);
+    }
+
+    /**
+     * Get the category for this extra
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ExtraCategory::class, 'category_id');
     }
 
     /**

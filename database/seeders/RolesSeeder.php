@@ -30,6 +30,8 @@ class RolesSeeder extends Seeder
             'stock.manage', 'stock.view',
             'payments.create', 'payments.view',
             'reports.view',
+            'housekeeping.manage', 'housekeeping.view',
+            'activity_logs.view',
         ];
 
         $manager->permissions()->sync(
@@ -50,6 +52,7 @@ class RolesSeeder extends Seeder
             'bookings.create', 'bookings.edit', 'bookings.view',
             'pos.sell', 'pos.view',
             'payments.create', 'payments.view',
+            'housekeeping.view',
         ];
 
         $receptionist->permissions()->sync(

@@ -89,7 +89,13 @@ class BookingController extends Controller
         $validated['status'] = 'confirmed';
 
         $booking = Booking::create($validated);
-        logActivity('created', $booking, "Created booking for {$booking->guest_name} - Room {$booking->room->room_number}");
+        logActivity('created', $booking, "Created booking for {$booking->guest_name} - Room {$booking->room->room_number}", [
+            'guest_name' => $booking->guest_name,
+            'guest_email' => $booking->guest_email,
+            'check_in' => $booking->check_in->format('Y-m-d'),
+            'check_out' => $booking->check_out->format('Y-m-d'),
+            'total_amount' => $booking->total_amount,
+        ]);
 
         return redirect()->route('bookings.index')
             ->with('success', 'Booking created successfully.');
@@ -151,8 +157,36 @@ class BookingController extends Controller
             ]);
         }
 
+        $oldStatus = $booking->status;
+        $oldValues = ['status' => $oldStatus];
+        $newValues = ['status' => $validated['status']];
+        
         $booking->update($validated);
-        logActivity('updated', $booking, "Updated booking #{$booking->id} for {$booking->guest_name}");
+        
+        // Log status changes
+        if ($oldStatus !== $validated['status']) {
+            if ($validated['status'] === 'checked_in') {
+                logActivity('checked_in', $booking, "Guest checked in - Booking #{$booking->id} - {$booking->guest_name}", null, $oldValues, $newValues);
+            } elseif ($validated['status'] === 'checked_out') {
+                logActivity('checked_out', $booking, "Guest checked out - Booking #{$booking->id} - {$booking->guest_name}", null, $oldValues, $newValues);
+                
+                // Auto-update room cleaning status if booking is checked out
+                $room = $booking->room;
+                if ($room) {
+                    $oldRoomStatus = $room->cleaning_status;
+                    $room->cleaning_status = 'dirty';
+                    $room->save();
+                    logSystemActivity('room_status_changed', $room, "Room {$room->room_number} automatically marked as DIRTY after checkout", null, 
+                        ['cleaning_status' => $oldRoomStatus], 
+                        ['cleaning_status' => 'dirty']
+                    );
+                }
+            } else {
+                logActivity('updated', $booking, "Booking status changed from {$oldStatus} to {$validated['status']} - Booking #{$booking->id}", null, $oldValues, $newValues);
+            }
+        } else {
+            logActivity('updated', $booking, "Updated booking #{$booking->id} for {$booking->guest_name}");
+        }
 
         return redirect()->route('bookings.index')
             ->with('success', 'Booking updated successfully.');

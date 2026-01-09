@@ -59,12 +59,68 @@
             grid-template-columns: 1fr;
         }
     }
+    .image-preview {
+        position: relative;
+        width: 100%;
+        padding-top: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid #e0e0e0;
+    }
+    .image-preview img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .image-preview .remove-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    document.getElementById('images').addEventListener('change', function(e) {
+        const preview = document.getElementById('imagePreview');
+        preview.innerHTML = '';
+        
+        Array.from(e.target.files).forEach((file, index) => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'image-preview';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                    `;
+                    preview.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+</script>
 @endpush
 
 @section('content')
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <form method="POST" action="{{ route('rooms.store') }}">
+    <form method="POST" action="{{ route('rooms.store') }}" enctype="multipart/form-data">
         @csrf
 
         <div class="form-group">
@@ -76,28 +132,23 @@
         </div>
 
         <div class="form-group">
-            <label for="room_type">Room Type *</label>
-            <select id="room_type" name="room_type" required>
+            <label for="room_type_id">Room Type *</label>
+            <select id="room_type_id" name="room_type_id" required>
                 <option value="">-- Select Room Type --</option>
                 @if(isset($roomTypes) && $roomTypes->count() > 0)
                     @foreach($roomTypes as $roomType)
-                        <option value="{{ $roomType->slug }}" {{ old('room_type') == $roomType->slug ? 'selected' : '' }}>
+                        <option value="{{ $roomType->id }}" {{ old('room_type_id') == $roomType->id ? 'selected' : '' }}>
                             {{ $roomType->name }} (${{ number_format($roomType->base_price, 2) }}/night)
                         </option>
                     @endforeach
-                @else
-                    <option value="standard">Standard</option>
-                    <option value="deluxe">Deluxe</option>
-                    <option value="suite">Suite</option>
-                    <option value="penthouse">Penthouse</option>
                 @endif
             </select>
-            @error('room_type')
+            @error('room_type_id')
                 <span class="error">{{ $message }}</span>
             @enderror
             @if(isset($roomTypes) && $roomTypes->count() == 0)
                 <small style="color: #999; display: block; margin-top: 5px;">
-                    No room types defined. <a href="{{ route('room-types.create') }}" style="color: #667eea;">Create one first</a> or use default types.
+                    No room types defined. <a href="{{ route('room-types.create') }}" style="color: #667eea;">Create one first</a>.
                 </small>
             @endif
         </div>
@@ -135,6 +186,18 @@
         <div class="form-group">
             <label for="description">Description</label>
             <textarea id="description" name="description" rows="3">{{ old('description') }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="images">Room Images</label>
+            <input type="file" id="images" name="images[]" accept="image/*" multiple>
+            <small style="color: #666; display: block; margin-top: 5px;">
+                You can upload multiple images. Supported formats: JPEG, PNG, JPG, GIF. Max size: 5MB per image.
+            </small>
+            @error('images.*')
+                <span class="error">{{ $message }}</span>
+            @enderror
+            <div id="imagePreview" style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;"></div>
         </div>
 
         <div style="margin-top: 30px; display: flex; gap: 10px;">

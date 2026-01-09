@@ -6,11 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Hotel extends Model
 {
     protected $fillable = [
         'name',
+        'slug',
         'address',
         'phone',
         'email',
@@ -73,5 +75,25 @@ class Hotel extends Model
     public function roomTypes(): HasMany
     {
         return $this->hasMany(RoomType::class);
+    }
+
+    /**
+     * Boot method to auto-generate slug
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($hotel) {
+            if (empty($hotel->slug)) {
+                $hotel->slug = Str::slug($hotel->name);
+            }
+        });
+        
+        static::updating(function ($hotel) {
+            if ($hotel->isDirty('name') && empty($hotel->slug)) {
+                $hotel->slug = Str::slug($hotel->name);
+            }
+        });
     }
 }

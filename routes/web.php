@@ -5,13 +5,17 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExtraController;
+use App\Http\Controllers\HotelAreaController;
 use App\Http\Controllers\HotelController;
+use App\Http\Controllers\HousekeepingRecordController;
+use App\Http\Controllers\HousekeepingReportController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PosSaleController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +23,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+// Public booking routes (no authentication required)
+Route::get('/book/{hotel_slug}/{room_id}', [\App\Http\Controllers\PublicBookingController::class, 'show'])->name('public.booking.show');
+Route::post('/book/{hotel_slug}/{room_id}', [\App\Http\Controllers\PublicBookingController::class, 'store'])->name('public.booking.store');
+Route::get('/book/{hotel_slug}/confirmation/{booking_reference}', [\App\Http\Controllers\PublicBookingController::class, 'confirmation'])->name('public.booking.confirmation');
+Route::post('/book/{hotel_slug}/{room_id}/check-availability', [\App\Http\Controllers\PublicBookingController::class, 'checkAvailability'])->name('public.booking.check-availability');
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
@@ -106,15 +116,107 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
         Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy');
     });
     
+    // Housekeeping Records Management
+    Route::middleware('permission:housekeeping.view')->group(function () {
+        Route::get('/housekeeping-records', [HousekeepingRecordController::class, 'index'])->name('housekeeping-records.index');
+    });
+    
+    Route::middleware('permission:housekeeping.manage')->group(function () {
+        Route::get('/housekeeping-records/create', [HousekeepingRecordController::class, 'create'])->name('housekeeping-records.create');
+        Route::post('/housekeeping-records', [HousekeepingRecordController::class, 'store'])->name('housekeeping-records.store');
+        Route::post('/housekeeping-records/{housekeepingRecord}/start', [HousekeepingRecordController::class, 'startCleaning'])->name('housekeeping-records.start');
+        Route::post('/housekeeping-records/{housekeepingRecord}/complete', [HousekeepingRecordController::class, 'completeCleaning'])->name('housekeeping-records.complete');
+        Route::post('/housekeeping-records/{housekeepingRecord}/inspect', [HousekeepingRecordController::class, 'inspectCleaning'])->name('housekeeping-records.inspect');
+    });
+    
+    Route::middleware('permission:housekeeping.view')->group(function () {
+        Route::get('/housekeeping-records/{housekeepingRecord}', [HousekeepingRecordController::class, 'show'])->name('housekeeping-records.show');
+    });
+    
+    Route::middleware('permission:housekeeping.manage')->group(function () {
+        Route::get('/housekeeping-records/{housekeepingRecord}/edit', [HousekeepingRecordController::class, 'edit'])->name('housekeeping-records.edit');
+        Route::put('/housekeeping-records/{housekeepingRecord}', [HousekeepingRecordController::class, 'update'])->name('housekeeping-records.update');
+        Route::delete('/housekeeping-records/{housekeepingRecord}', [HousekeepingRecordController::class, 'destroy'])->name('housekeeping-records.destroy');
+    });
+
+    // Hotel Areas Management
+    Route::middleware('permission:housekeeping.view')->group(function () {
+        Route::get('/hotel-areas', [HotelAreaController::class, 'index'])->name('hotel-areas.index');
+    });
+    
+    Route::middleware('permission:housekeeping.manage')->group(function () {
+        Route::get('/hotel-areas/create', [HotelAreaController::class, 'create'])->name('hotel-areas.create');
+        Route::post('/hotel-areas', [HotelAreaController::class, 'store'])->name('hotel-areas.store');
+        Route::get('/hotel-areas/{hotelArea}/edit', [HotelAreaController::class, 'edit'])->name('hotel-areas.edit');
+        Route::put('/hotel-areas/{hotelArea}', [HotelAreaController::class, 'update'])->name('hotel-areas.update');
+        Route::delete('/hotel-areas/{hotelArea}', [HotelAreaController::class, 'destroy'])->name('hotel-areas.destroy');
+    });
+    
+    Route::middleware('permission:housekeeping.view')->group(function () {
+        Route::get('/hotel-areas/{hotelArea}', [HotelAreaController::class, 'show'])->name('hotel-areas.show');
+    });
+
+    // Housekeeping Reports
+    Route::middleware('permission:housekeeping.view')->group(function () {
+        Route::get('/housekeeping-reports', [HousekeepingReportController::class, 'index'])->name('housekeeping-reports.index');
+        Route::get('/housekeeping-reports/daily-summary', [HousekeepingReportController::class, 'dailySummary'])->name('housekeeping-reports.daily-summary');
+        Route::get('/housekeeping-reports/staff-performance', [HousekeepingReportController::class, 'staffPerformance'])->name('housekeeping-reports.staff-performance');
+        Route::get('/housekeeping-reports/pending-tasks', [HousekeepingReportController::class, 'pendingTasks'])->name('housekeeping-reports.pending-tasks');
+        Route::get('/housekeeping-reports/issues', [HousekeepingReportController::class, 'issuesReport'])->name('housekeeping-reports.issues');
+    });
+
+    // Tasks Management (Housekeeping & Maintenance)
+    Route::middleware('permission:housekeeping.view')->group(function () {
+        Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+    });
+    
+    // Tasks create must come before tasks/{task} to avoid route conflict
+    Route::middleware('permission:housekeeping.manage')->group(function () {
+        Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
+        Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    });
+    
+    // Tasks view/show (requires housekeeping.view permission)
+    Route::middleware('permission:housekeeping.view')->group(function () {
+        Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+    });
+    
+    // Tasks edit/update/delete (requires housekeeping.manage permission)
+    Route::middleware('permission:housekeeping.manage')->group(function () {
+        Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('tasks.edit');
+        Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+        Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+    });
+    
+    // Extra Categories Management (requires stock.manage permission)
+    Route::middleware('permission:stock.manage')->group(function () {
+        Route::get('/extra-categories', [\App\Http\Controllers\ExtraCategoryController::class, 'index'])->name('extra-categories.index');
+        Route::get('/extra-categories/create', [\App\Http\Controllers\ExtraCategoryController::class, 'create'])->name('extra-categories.create');
+        Route::post('/extra-categories', [\App\Http\Controllers\ExtraCategoryController::class, 'store'])->name('extra-categories.store');
+        Route::get('/extra-categories/{extraCategory}', [\App\Http\Controllers\ExtraCategoryController::class, 'show'])->name('extra-categories.show');
+        Route::get('/extra-categories/{extraCategory}/edit', [\App\Http\Controllers\ExtraCategoryController::class, 'edit'])->name('extra-categories.edit');
+        Route::put('/extra-categories/{extraCategory}', [\App\Http\Controllers\ExtraCategoryController::class, 'update'])->name('extra-categories.update');
+        Route::delete('/extra-categories/{extraCategory}', [\App\Http\Controllers\ExtraCategoryController::class, 'destroy'])->name('extra-categories.destroy');
+    });
+    
     // Extras Management (requires stock.view or stock.manage permission)
     Route::middleware('permission:stock.view')->group(function () {
         Route::get('/extras', [ExtraController::class, 'index'])->name('extras.index');
-        Route::get('/extras/{extra}', [ExtraController::class, 'show'])->name('extras.show');
     });
     
+    // Extras create must come before extras/{extra} to avoid route conflict
     Route::middleware('permission:stock.manage')->group(function () {
         Route::get('/extras/create', [ExtraController::class, 'create'])->name('extras.create');
         Route::post('/extras', [ExtraController::class, 'store'])->name('extras.store');
+    });
+    
+    // Extras view/show (requires stock.view permission)
+    Route::middleware('permission:stock.view')->group(function () {
+        Route::get('/extras/{extra}', [ExtraController::class, 'show'])->name('extras.show');
+    });
+    
+    // Extras edit/update/delete (requires stock.manage permission)
+    Route::middleware('permission:stock.manage')->group(function () {
         Route::get('/extras/{extra}/edit', [ExtraController::class, 'edit'])->name('extras.edit');
         Route::put('/extras/{extra}', [ExtraController::class, 'update'])->name('extras.update');
         Route::delete('/extras/{extra}', [ExtraController::class, 'destroy'])->name('extras.destroy');
@@ -123,12 +225,17 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // POS Sales Management (requires pos.view permission)
     Route::middleware('permission:pos.view')->group(function () {
         Route::get('/pos-sales', [PosSaleController::class, 'index'])->name('pos-sales.index');
-        Route::get('/pos-sales/{posSale}', [PosSaleController::class, 'show'])->name('pos-sales.show');
     });
     
+    // POS Sales create must come before pos-sales/{posSale} to avoid route conflict
     Route::middleware('permission:pos.sell')->group(function () {
         Route::get('/pos-sales/create', [PosSaleController::class, 'create'])->name('pos-sales.create');
         Route::post('/pos-sales', [PosSaleController::class, 'store'])->name('pos-sales.store');
+    });
+    
+    // POS Sales view/show (requires pos.view permission)
+    Route::middleware('permission:pos.view')->group(function () {
+        Route::get('/pos-sales/{posSale}', [PosSaleController::class, 'show'])->name('pos-sales.show');
     });
     
     // Stock Movements Management (requires stock.view or stock.manage permission)

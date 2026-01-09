@@ -42,6 +42,13 @@ class PermissionsSeeder extends Seeder
             // User & Role Management
             ['name' => 'Manage Users', 'slug' => 'users.manage', 'description' => 'Create, edit, and manage users'],
             ['name' => 'Manage Roles', 'slug' => 'roles.manage', 'description' => 'Create, edit roles and assign permissions'],
+            
+            // Housekeeping & Maintenance
+            ['name' => 'Manage Housekeeping', 'slug' => 'housekeeping.manage', 'description' => 'Create, edit, and manage housekeeping/maintenance tasks'],
+            ['name' => 'View Housekeeping', 'slug' => 'housekeeping.view', 'description' => 'View housekeeping/maintenance tasks'],
+            
+            // Activity Logs
+            ['name' => 'View Activity Logs', 'slug' => 'activity_logs.view', 'description' => 'View system activity logs and audit trail'],
         ];
 
         foreach ($permissions as $permission) {

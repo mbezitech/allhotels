@@ -157,6 +157,30 @@
                     </li>
                 @endif
 
+                @if(auth()->user()->hasPermission('housekeeping.view') || auth()->user()->isSuperAdmin())
+                    <li class="nav-section">Housekeeping</li>
+                    <li class="nav-item">
+                        <a href="{{ route('housekeeping-records.index') }}" class="nav-link {{ request()->routeIs('housekeeping-records.*') ? 'active' : '' }}">
+                            Cleaning Records
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('hotel-areas.index') }}" class="nav-link {{ request()->routeIs('hotel-areas.*') ? 'active' : '' }}">
+                            Hotel Areas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('housekeeping-reports.index') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.*') ? 'active' : '' }}">
+                            Reports
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('tasks.index') }}" class="nav-link {{ request()->routeIs('tasks.*') ? 'active' : '' }}">
+                            Tasks
+                        </a>
+                    </li>
+                @endif
+
                 @if(auth()->user()->hasPermission('pos.view') || auth()->user()->isSuperAdmin())
                     <li class="nav-section">POS & Stock</li>
                     <li class="nav-item">
@@ -164,6 +188,13 @@
                             Extras
                         </a>
                     </li>
+                    @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+                        <li class="nav-item">
+                            <a href="{{ route('extra-categories.index') }}" class="nav-link {{ request()->routeIs('extra-categories.*') ? 'active' : '' }}">
+                                Categories
+                            </a>
+                        </li>
+                    @endif
                     <li class="nav-item">
                         <a href="{{ route('pos-sales.index') }}" class="nav-link {{ request()->routeIs('pos-sales.*') ? 'active' : '' }}">
                             POS Sales

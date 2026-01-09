@@ -48,10 +48,13 @@ class PosSaleController extends Controller
         $hotelId = session('hotel_id');
         $extras = Extra::where('hotel_id', $hotelId)
             ->where('is_active', true)
-            ->orderBy('category')
+            ->with('category')
+            ->orderBy('category_id')
             ->orderBy('name')
             ->get()
-            ->groupBy('category');
+            ->groupBy(function ($extra) {
+                return $extra->category ? $extra->category->name : 'Uncategorized';
+            });
         
         $rooms = Room::where('hotel_id', $hotelId)
             ->orderBy('room_number')

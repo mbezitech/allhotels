@@ -77,6 +77,20 @@ class LoginController extends Controller
         // Regenerate session for security
         $request->session()->regenerate();
 
+        // Log user login
+        if ($hotelId) {
+            $hotel = Hotel::find($hotelId);
+            logActivity(
+                'user_login',
+                null,
+                "User logged in: {$user->name}" . ($hotel ? " - Hotel: {$hotel->name}" : ''),
+                ['hotel_id' => $hotelId, 'is_super_admin' => $user->isSuperAdmin()],
+                null,
+                null,
+                false
+            );
+        }
+
         return redirect()->intended('/dashboard');
     }
 
@@ -85,6 +99,23 @@ class LoginController extends Controller
      */
     public function logout(Request $request)
     {
+        $user = Auth::user();
+        $hotelId = session('hotel_id');
+        
+        // Log user logout before session is destroyed
+        if ($user && $hotelId) {
+            $hotel = Hotel::find($hotelId);
+            logActivity(
+                'user_logout',
+                null,
+                "User logged out: {$user->name}" . ($hotel ? " - Hotel: {$hotel->name}" : ''),
+                ['hotel_id' => $hotelId, 'is_super_admin' => $user->isSuperAdmin()],
+                null,
+                null,
+                false
+            );
+        }
+        
         Auth::logout();
         Session::forget('hotel_id');
         $request->session()->invalidate();

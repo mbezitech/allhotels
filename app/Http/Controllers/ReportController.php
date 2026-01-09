@@ -31,6 +31,24 @@ class ReportController extends Controller
         $date = $request->get('date', Carbon::today()->format('Y-m-d'));
         $startDate = $request->get('start_date', Carbon::today()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::today()->format('Y-m-d'));
+        
+        // Log report view
+        if ($request->has('export')) {
+            logActivity('report_exported', null, "Daily Sales Report exported (PDF/Excel) - Date: {$date}, Range: {$startDate} to {$endDate}", [
+                'report_type' => 'daily_sales',
+                'format' => $request->get('format', 'pdf'),
+                'date' => $date,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]);
+        } else {
+            logActivity('report_viewed', null, "Daily Sales Report viewed - Date: {$date}, Range: {$startDate} to {$endDate}", [
+                'report_type' => 'daily_sales',
+                'date' => $date,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]);
+        }
 
         // Single day report
         $dailySales = PosSale::where('hotel_id', $hotelId)
@@ -82,6 +100,24 @@ class ReportController extends Controller
         $date = $request->get('date', Carbon::today()->format('Y-m-d'));
         $startDate = $request->get('start_date', Carbon::today()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', Carbon::today()->format('Y-m-d'));
+        
+        // Log report view
+        if ($request->has('export')) {
+            logActivity('report_exported', null, "Occupancy Report exported (PDF/Excel) - Date: {$date}, Range: {$startDate} to {$endDate}", [
+                'report_type' => 'occupancy',
+                'format' => $request->get('format', 'pdf'),
+                'date' => $date,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]);
+        } else {
+            logActivity('report_viewed', null, "Occupancy Report viewed - Date: {$date}, Range: {$startDate} to {$endDate}", [
+                'report_type' => 'occupancy',
+                'date' => $date,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]);
+        }
 
         // Total rooms
         $totalRooms = Room::where('hotel_id', $hotelId)->count();
@@ -142,6 +178,18 @@ class ReportController extends Controller
     public function stock(Request $request)
     {
         $hotelId = session('hotel_id');
+        
+        // Log report view
+        if ($request->has('export')) {
+            logActivity('report_exported', null, "Stock Report exported (PDF/Excel)", [
+                'report_type' => 'stock',
+                'format' => $request->get('format', 'pdf'),
+            ]);
+        } else {
+            logActivity('report_viewed', null, "Stock Report viewed", [
+                'report_type' => 'stock',
+            ]);
+        }
         
         // Low stock items
         $lowStockItems = Extra::where('hotel_id', $hotelId)

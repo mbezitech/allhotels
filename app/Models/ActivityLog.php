@@ -16,12 +16,16 @@ class ActivityLog extends Model
         'model_id',
         'description',
         'properties',
+        'old_values',
+        'new_values',
         'ip_address',
         'user_agent',
     ];
 
     protected $casts = [
         'properties' => 'array',
+        'old_values' => 'array',
+        'new_values' => 'array',
     ];
 
     /**
@@ -33,7 +37,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * Get the user who performed the action
+     * Get the user who performed the action (nullable for system actions)
      */
     public function user(): BelongsTo
     {
@@ -46,5 +50,37 @@ class ActivityLog extends Model
     public function model(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * Get the actor name (user name or "SYSTEM")
+     */
+    public function getActorNameAttribute(): string
+    {
+        return $this->user ? $this->user->name : 'SYSTEM';
+    }
+
+    /**
+     * Get the subject type (alias for model_type)
+     */
+    public function getSubjectTypeAttribute(): ?string
+    {
+        return $this->model_type;
+    }
+
+    /**
+     * Get the subject ID (alias for model_id)
+     */
+    public function getSubjectIdAttribute(): ?int
+    {
+        return $this->model_id;
+    }
+
+    /**
+     * Check if this is a system-generated log
+     */
+    public function isSystemLog(): bool
+    {
+        return $this->user_id === null;
     }
 }

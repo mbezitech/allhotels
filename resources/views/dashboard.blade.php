@@ -215,7 +215,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                         <div>
                             <div style="font-weight: 600; color: #333; font-size: 16px;">Room {{ $item['room']->room_number }}</div>
-                            <div style="font-size: 12px; color: #666;">{{ $item['room']->room_type }}</div>
+                            <div style="font-size: 12px; color: #666;">{{ $item['room']->roomType->name ?? 'N/A' }}</div>
                         </div>
                         <span style="font-size: 11px; padding: 4px 8px; background: {{ $item['available_date']->isToday() ? '#d4edda' : '#d1ecf1' }}; color: {{ $item['available_date']->isToday() ? '#155724' : '#0c5460' }}; border-radius: 4px;">
                             {{ $item['available_date']->isToday() ? 'Available Now' : 'Available ' . $item['available_date']->diffForHumans() }}

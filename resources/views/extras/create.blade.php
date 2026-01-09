@@ -1,89 +1,70 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Extra - Hotel Management</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-        }
-        .header {
-            background: white;
-            padding: 20px 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .container {
-            max-width: 800px;
-            margin: 30px auto;
-            padding: 0 30px;
-        }
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .checkbox-group input {
-            width: auto;
-        }
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 14px;
-        }
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        .btn-secondary {
-            background: #95a5a6;
-            color: white;
-        }
-        .error {
-            color: #e74c3c;
-            font-size: 13px;
-            margin-top: 5px;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Create New Extra</h1>
-    </div>
+@extends('layouts.app')
 
-    <div class="container">
-        <div class="card">
+@section('title', 'Create Extra')
+@section('page-title', 'Create Extra')
+
+@push('styles')
+<style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+    input, select, textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+    input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .checkbox-group input {
+        width: auto;
+    }
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+    }
+    .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .error {
+        color: #e74c3c;
+        font-size: 13px;
+        margin-top: 5px;
+    }
+</style>
+@endpush
+
+@section('content')
+<div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <form method="POST" action="{{ route('extras.store') }}">
                 @csrf
 
@@ -96,13 +77,21 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="category">Category *</label>
-                    <select id="category" name="category" required>
-                        <option value="bar" {{ old('category') == 'bar' ? 'selected' : '' }}>Bar</option>
-                        <option value="pool" {{ old('category') == 'pool' ? 'selected' : '' }}>Pool</option>
-                        <option value="restaurant" {{ old('category') == 'restaurant' ? 'selected' : '' }}>Restaurant</option>
-                        <option value="general" {{ old('category') == 'general' ? 'selected' : '' }}>General</option>
+                    <label for="category_id">Category *</label>
+                    <select id="category_id" name="category_id" required>
+                        <option value="">-- Select Category --</option>
+                        @foreach($categories as $category)
+                            <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
+                                {{ $category->name }}
+                            </option>
+                        @endforeach
                     </select>
+                    @error('category_id')
+                        <span class="error">{{ $message }}</span>
+                    @enderror
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        <a href="{{ route('extra-categories.create') }}" target="_blank">Create new category</a>
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -143,8 +132,6 @@
                     <a href="{{ route('extras.index') }}" class="btn btn-secondary">Cancel</a>
                 </div>
             </form>
-        </div>
-    </div>
-</body>
-</html>
+</div>
+@endsection
 

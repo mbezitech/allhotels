@@ -59,12 +59,76 @@
             grid-template-columns: 1fr;
         }
     }
+    .image-preview {
+        position: relative;
+        width: 100%;
+    }
+    .image-preview img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+    }
+    .remove-image-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+    .remove-image-btn:hover {
+        background: #c0392b;
+    }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    // Handle removal of existing images
+    document.querySelectorAll('.remove-image-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const preview = this.closest('.image-preview');
+            preview.remove();
+        });
+    });
+
+    // Handle new image previews
+    document.getElementById('images').addEventListener('change', function(e) {
+        const preview = document.getElementById('imagePreview');
+        preview.innerHTML = '';
+        
+        Array.from(e.target.files).forEach((file, index) => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'image-preview';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                    `;
+                    preview.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+</script>
 @endpush
 
 @section('content')
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <form method="POST" action="{{ route('rooms.update', $room) }}">
+    <form method="POST" action="{{ route('rooms.update', $room) }}" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 
@@ -77,23 +141,18 @@
         </div>
 
         <div class="form-group">
-            <label for="room_type">Room Type *</label>
-            <select id="room_type" name="room_type" required>
+            <label for="room_type_id">Room Type *</label>
+            <select id="room_type_id" name="room_type_id" required>
                 <option value="">-- Select Room Type --</option>
                 @if(isset($roomTypes) && $roomTypes->count() > 0)
                     @foreach($roomTypes as $roomType)
-                        <option value="{{ $roomType->slug }}" {{ old('room_type', $room->room_type) == $roomType->slug ? 'selected' : '' }}>
+                        <option value="{{ $roomType->id }}" {{ old('room_type_id', $room->room_type_id) == $roomType->id ? 'selected' : '' }}>
                             {{ $roomType->name }} (${{ number_format($roomType->base_price, 2) }}/night)
                         </option>
                     @endforeach
-                @else
-                    <option value="standard" {{ old('room_type', $room->room_type) == 'standard' ? 'selected' : '' }}>Standard</option>
-                    <option value="deluxe" {{ old('room_type', $room->room_type) == 'deluxe' ? 'selected' : '' }}>Deluxe</option>
-                    <option value="suite" {{ old('room_type', $room->room_type) == 'suite' ? 'selected' : '' }}>Suite</option>
-                    <option value="penthouse" {{ old('room_type', $room->room_type) == 'penthouse' ? 'selected' : '' }}>Penthouse</option>
                 @endif
             </select>
-            @error('room_type')
+            @error('room_type_id')
                 <span class="error">{{ $message }}</span>
             @enderror
         </div>
@@ -131,6 +190,35 @@
         <div class="form-group">
             <label for="description">Description</label>
             <textarea id="description" name="description" rows="3">{{ old('description', $room->description) }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Existing Images</label>
+            @if($room->images && count($room->images) > 0)
+                <div id="existingImages" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                    @foreach($room->images as $index => $image)
+                        <div class="image-preview" style="position: relative;">
+                            <img src="{{ $image }}" alt="Room Image" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #e0e0e0;">
+                            <button type="button" class="remove-image-btn" data-index="{{ $index }}" style="position: absolute; top: 5px; right: 5px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer;">×</button>
+                            <input type="hidden" name="existing_images[]" value="{{ $image }}">
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p style="color: #999; margin-bottom: 15px;">No images uploaded yet.</p>
+            @endif
+        </div>
+
+        <div class="form-group">
+            <label for="images">Add New Images</label>
+            <input type="file" id="images" name="images[]" accept="image/*" multiple>
+            <small style="color: #666; display: block; margin-top: 5px;">
+                You can upload multiple images. Supported formats: JPEG, PNG, JPG, GIF. Max size: 5MB per image.
+            </small>
+            @error('images.*')
+                <span class="error">{{ $message }}</span>
+            @enderror
+            <div id="imagePreview" style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;"></div>
         </div>
 
         <div style="margin-top: 30px; display: flex; gap: 10px;">

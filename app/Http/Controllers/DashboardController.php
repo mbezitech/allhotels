@@ -156,7 +156,7 @@ class DashboardController extends Controller
 
         // Upcoming available rooms (rooms that will be available in the next 7 days)
         $upcomingAvailable = [];
-        $rooms = Room::where('hotel_id', $hotelId)->get();
+        $rooms = Room::where('hotel_id', $hotelId)->with('roomType')->get();
         
         foreach ($rooms as $room) {
             // Check if room is currently booked

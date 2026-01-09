@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Extra;
+use App\Models\ExtraCategory;
 use Illuminate\Http\Request;
 
 class ExtraController extends Controller
@@ -17,8 +18,8 @@ class ExtraController extends Controller
         $query = Extra::where('hotel_id', $hotelId);
 
         // Filter by category
-        if ($request->has('category') && $request->category) {
-            $query->where('category', $request->category);
+        if ($request->has('category_id') && $request->category_id) {
+            $query->where('category_id', $request->category_id);
         }
 
         // Filter by active status
@@ -26,7 +27,7 @@ class ExtraController extends Controller
             $query->where('is_active', $request->active);
         }
 
-        $extras = $query->orderBy('category')->orderBy('name')->get();
+        $extras = $query->with('category')->orderBy('category_id')->orderBy('name')->get();
 
         return view('extras.index', compact('extras'));
     }
@@ -36,7 +37,12 @@ class ExtraController extends Controller
      */
     public function create()
     {
-        return view('extras.create');
+        $hotelId = session('hotel_id');
+        $categories = ExtraCategory::where('hotel_id', $hotelId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        return view('extras.create', compact('categories'));
     }
 
     /**
@@ -44,17 +50,23 @@ class ExtraController extends Controller
      */
     public function store(Request $request)
     {
+        $hotelId = session('hotel_id');
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'category' => 'required|string|max:255',
+            'category_id' => ['required', 'exists:extra_categories,id', function ($attribute, $value, $fail) use ($hotelId) {
+                $category = ExtraCategory::find($value);
+                if ($category && $category->hotel_id != $hotelId) {
+                    $fail('The selected category does not belong to this hotel.');
+                }
+            }],
             'price' => 'required|numeric|min:0',
             'stock_tracked' => 'boolean',
             'min_stock' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
         ]);
 
-        $validated['hotel_id'] = session('hotel_id');
+        $validated['hotel_id'] = $hotelId;
         $validated['stock_tracked'] = $request->has('stock_tracked');
         $validated['is_active'] = $request->has('is_active');
 
@@ -80,8 +92,12 @@ class ExtraController extends Controller
     public function edit(Extra $extra)
     {
         $this->authorizeHotel($extra);
-        
-        return view('extras.edit', compact('extra'));
+        $hotelId = session('hotel_id');
+        $categories = ExtraCategory::where('hotel_id', $hotelId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        return view('extras.edit', compact('extra', 'categories'));
     }
 
     /**
@@ -91,10 +107,16 @@ class ExtraController extends Controller
     {
         $this->authorizeHotel($extra);
 
+        $hotelId = session('hotel_id');
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'category' => 'required|string|max:255',
+            'category_id' => ['required', 'exists:extra_categories,id', function ($attribute, $value, $fail) use ($hotelId) {
+                $category = ExtraCategory::find($value);
+                if ($category && $category->hotel_id != $hotelId) {
+                    $fail('The selected category does not belong to this hotel.');
+                }
+            }],
             'price' => 'required|numeric|min:0',
             'stock_tracked' => 'boolean',
             'min_stock' => 'nullable|integer|min:0',
