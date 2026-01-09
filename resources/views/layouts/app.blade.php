@@ -139,6 +139,11 @@
                 @if(auth()->user()->hasPermission('rooms.view') || auth()->user()->isSuperAdmin())
                     <li class="nav-section">Rooms & Bookings</li>
                     <li class="nav-item">
+                        <a href="{{ route('links.index') }}" class="nav-link {{ request()->routeIs('links.*') ? 'active' : '' }}">
+                            Link References
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="{{ route('rooms.index') }}" class="nav-link {{ request()->routeIs('rooms.*') ? 'active' : '' }}">
                             Rooms
                         </a>

@@ -78,6 +78,8 @@
                 <th>Total</th>
                 <th>Paid</th>
                 <th>Balance</th>
+                <th>Source</th>
+                <th>Created By</th>
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
@@ -96,6 +98,33 @@
                         ${{ number_format($booking->outstanding_balance, 2) }}
                         @if($booking->isFullyPaid())
                             <span class="badge badge-paid" style="margin-left: 5px;">Paid</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($booking->source === 'public' || $booking->isPublic())
+                            <span class="badge badge-pending">Public Link</span>
+                        @else
+                            <span class="badge badge-confirmed">Dashboard</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($booking->source === 'public' || $booking->isPublic())
+                            <span style="font-size: 12px; color: #666;">Guest (Public)</span>
+                        @elseif($booking->createdBy)
+                            @php
+                                $hotelId = session('hotel_id');
+                                $roles = $booking->createdBy->roles->where('pivot.hotel_id', $hotelId)->pluck('name')->implode(', ');
+                            @endphp
+                            <div style="font-size: 13px; color: #333;">
+                                {{ $booking->createdBy->name }}
+                            </div>
+                            @if($roles)
+                                <div style="font-size: 11px; color: #777;">
+                                    {{ $roles }}
+                                </div>
+                            @endif
+                        @else
+                            <span style="font-size: 12px; color: #999;">-</span>
                         @endif
                     </td>
                     <td>

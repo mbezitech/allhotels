@@ -18,7 +18,7 @@ class BookingController extends Controller
         $hotelId = session('hotel_id');
         
         $query = Booking::where('hotel_id', $hotelId)
-            ->with('room');
+            ->with(['room', 'createdBy.roles']);
 
         // Filter by status
         if ($request->has('status') && $request->status) {
@@ -87,6 +87,8 @@ class BookingController extends Controller
 
         $validated['hotel_id'] = $hotelId;
         $validated['status'] = 'confirmed';
+        $validated['source'] = 'dashboard';
+        $validated['created_by'] = auth()->id();
 
         $booking = Booking::create($validated);
         logActivity('created', $booking, "Created booking for {$booking->guest_name} - Room {$booking->room->room_number}", [
@@ -226,14 +228,17 @@ class BookingController extends Controller
         $month = $request->get('month', now()->month);
         $year = $request->get('year', now()->year);
         
-        // Get bookings for the month
+        // Get bookings for the month (only active / occupying statuses)
         $bookings = Booking::where('hotel_id', $hotelId)
-            ->whereYear('check_in', $year)
-            ->whereMonth('check_in', $month)
-            ->orWhere(function ($query) use ($year, $month, $hotelId) {
-                $query->where('hotel_id', $hotelId)
-                      ->whereYear('check_out', $year)
-                      ->whereMonth('check_out', $month);
+            ->whereIn('status', ['pending', 'confirmed', 'checked_in'])
+            ->where(function ($query) use ($year, $month, $hotelId) {
+                $query->whereYear('check_in', $year)
+                      ->whereMonth('check_in', $month)
+                      ->orWhere(function ($q2) use ($year, $month, $hotelId) {
+                          $q2->where('hotel_id', $hotelId)
+                             ->whereYear('check_out', $year)
+                             ->whereMonth('check_out', $month);
+                      });
             })
             ->with('room')
             ->get();

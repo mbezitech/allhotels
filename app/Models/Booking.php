@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\User;
 
 class Booking extends Model
 {
@@ -21,6 +22,8 @@ class Booking extends Model
         'children',
         'total_amount',
         'status',
+        'source',
+        'created_by',
         'notes',
     ];
 
@@ -52,6 +55,22 @@ class Booking extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * User who created the booking (internal dashboard)
+     */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Check if booking was created from public link
+     */
+    public function isPublic(): bool
+    {
+        return $this->source === 'public';
     }
 
     /**
@@ -165,5 +184,48 @@ class Booking extends Model
                 }
             }
         });
+    }
+
+    /**
+     * Expire stale pending bookings (e.g. pending payment) after given minutes.
+     *
+     * @param int $minutes
+     * @return int Number of bookings expired
+     */
+    public static function expireStalePending(int $minutes = 10): int
+    {
+        $cutoff = now()->subMinutes($minutes);
+
+        $stale = self::where('status', 'pending')
+            ->where('created_at', '<=', $cutoff)
+            ->with('room')
+            ->get();
+
+        $count = 0;
+
+        foreach ($stale as $booking) {
+            $oldStatus = $booking->status;
+            $booking->status = 'cancelled';
+            $booking->save();
+            $count++;
+
+            $roomNumber = $booking->room ? $booking->room->room_number : 'N/A';
+
+            // Log as system action
+            logSystemActivity(
+                'booking_expired',
+                $booking,
+                "Booking auto-cancelled after remaining pending for more than {$minutes} minutes: {$booking->guest_name} - Room {$roomNumber}",
+                [
+                    'booking_id' => $booking->id,
+                    'reason' => 'pending_timeout',
+                    'minutes' => $minutes,
+                ],
+                ['status' => $oldStatus],
+                ['status' => 'cancelled']
+            );
+        }
+
+        return $count;
     }
 }

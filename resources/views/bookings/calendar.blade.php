@@ -59,15 +59,40 @@
         padding: 2px 4px;
         margin: 2px 0;
         border-radius: 3px;
-        background: #667eea;
         color: white;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         cursor: pointer;
+        border-left: 3px solid rgba(255, 255, 255, 0.5);
     }
     .booking-item:hover {
-        opacity: 0.8;
+        opacity: 0.9;
+        transform: translateX(2px);
+        transition: all 0.2s;
+    }
+    .booking-item.confirmed {
+        background: #28a745;
+    }
+    .booking-item.pending {
+        background: #ffc107;
+        color: #333;
+    }
+    .booking-item.checked_in {
+        background: #17a2b8;
+    }
+    .booking-item.checked_out {
+        background: #6c757d;
+    }
+    .booking-item.cancelled {
+        background: #dc3545;
+    }
+    .status-badge {
+        font-size: 9px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-right: 4px;
+        opacity: 0.9;
     }
     .weekday-header {
         display: grid;
@@ -88,6 +113,32 @@
         gap: 10px;
         margin-bottom: 20px;
     }
+    .status-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+    }
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        border-left: 3px solid rgba(255, 255, 255, 0.5);
+    }
+    .legend-color.confirmed { background: #28a745; }
+    .legend-color.pending { background: #ffc107; }
+    .legend-color.checked_in { background: #17a2b8; }
+    .legend-color.checked_out { background: #6c757d; }
+    .legend-color.cancelled { background: #dc3545; }
 </style>
 @endpush
 
@@ -98,6 +149,29 @@
         @if(auth()->user()->hasPermission('bookings.create') || auth()->user()->isSuperAdmin())
             <a href="{{ route('bookings.create') }}" class="btn">New Booking</a>
         @endif
+    </div>
+
+    <div class="status-legend">
+        <div class="legend-item">
+            <div class="legend-color confirmed"></div>
+            <span><strong>Confirmed</strong> - Booking confirmed</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color pending"></div>
+            <span><strong>Pending</strong> - Awaiting confirmation</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color checked_in"></div>
+            <span><strong>Checked In</strong> - Guest currently staying</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color checked_out"></div>
+            <span><strong>Checked Out</strong> - Stay completed</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color cancelled"></div>
+            <span><strong>Cancelled</strong> - Booking cancelled</span>
+        </div>
     </div>
 
     <div class="calendar-header">
@@ -124,7 +198,15 @@
             <div class="calendar-day {{ !$day['isCurrentMonth'] ? 'other-month' : '' }} {{ $day['isToday'] ? 'today' : '' }}">
                 <div class="day-number">{{ $day['date']->day }}</div>
                 @foreach($day['bookings'] as $booking)
-                    <a href="{{ route('bookings.show', $booking->id) }}" class="booking-item" title="{{ $booking->guest_name }} - Room {{ $booking->room->room_number }}" style="text-decoration: none; display: block;">
+                    @php
+                        $statusClass = str_replace('_', '-', $booking->status);
+                        $statusLabel = ucfirst(str_replace('_', ' ', $booking->status));
+                    @endphp
+                    <a href="{{ route('bookings.show', $booking->id) }}" 
+                       class="booking-item {{ $statusClass }}" 
+                       title="{{ $booking->guest_name }} - Room {{ $booking->room->room_number }} - Status: {{ $statusLabel }}" 
+                       style="text-decoration: none; display: block;">
+                        <span class="status-badge">{{ $statusLabel }}</span>
                         {{ $booking->guest_name }} ({{ $booking->room->room_number }})
                     </a>
                 @endforeach

@@ -91,7 +91,7 @@
 
     <div class="info-row">
         <span class="info-label">Room:</span>
-        <span class="info-value">{{ $booking->room->room_number }} ({{ $booking->room->room_type }})</span>
+        <span class="info-value">{{ $booking->room->room_number }}</span>
     </div>
 
     <div class="info-row">
@@ -146,6 +146,37 @@
     <div class="info-row">
         <span class="info-label">Status:</span>
         <span class="info-value">{{ ucfirst(str_replace('_', ' ', $booking->status)) }}</span>
+    </div>
+
+    <div class="info-row">
+        <span class="info-label">Source:</span>
+        <span class="info-value">
+            @if($booking->source === 'public' || $booking->isPublic())
+                Public Website
+            @else
+                Dashboard
+            @endif
+        </span>
+    </div>
+
+    <div class="info-row">
+        <span class="info-label">Created By:</span>
+        <span class="info-value">
+            @if($booking->source === 'public' || $booking->isPublic())
+                Guest (Public Link)
+            @elseif($booking->createdBy)
+                @php
+                    $hotelId = session('hotel_id');
+                    $roles = $booking->createdBy->roles->where('pivot.hotel_id', $hotelId)->pluck('name')->implode(', ');
+                @endphp
+                {{ $booking->createdBy->name }}
+                @if($roles)
+                    <span style="font-size: 11px; color: #777; margin-left: 6px;">({{ $roles }})</span>
+                @endif
+            @else
+                <span style="font-size: 12px; color: #999;">-</span>
+            @endif
+        </span>
     </div>
 
     @if($booking->notes)

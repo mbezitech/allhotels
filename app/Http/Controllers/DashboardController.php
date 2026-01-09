@@ -21,6 +21,9 @@ class DashboardController extends Controller
         $hotelId = session('hotel_id');
         $user = Auth::user();
         
+        // Auto-expire stale pending bookings (e.g. pending payment > 10 minutes)
+        \App\Models\Booking::expireStalePending(10);
+
         // Super admin can view dashboard without hotel context
         if ($user->isSuperAdmin() && !$hotelId) {
             $hotel = null;

@@ -250,7 +250,7 @@
                     <div class="grid-2">
                         <div class="form-group">
                             <label for="check_in">Check In *</label>
-                            <input type="date" id="check_in" name="check_in" value="{{ old('check_in') }}" required min="{{ date('Y-m-d') }}" onchange="calculatePrice()">
+                            <input type="date" id="check_in" name="check_in" value="{{ old('check_in', $checkIn ?? '') }}" required min="{{ date('Y-m-d') }}" onchange="calculatePrice()">
                             @error('check_in')
                                 <span class="error">{{ $message }}</span>
                             @enderror
@@ -258,7 +258,7 @@
 
                         <div class="form-group">
                             <label for="check_out">Check Out *</label>
-                            <input type="date" id="check_out" name="check_out" value="{{ old('check_out') }}" required min="{{ date('Y-m-d', strtotime('+1 day')) }}" onchange="calculatePrice()">
+                            <input type="date" id="check_out" name="check_out" value="{{ old('check_out', $checkOut ?? '') }}" required min="{{ date('Y-m-d', strtotime('+1 day')) }}" onchange="calculatePrice()">
                             @error('check_out')
                                 <span class="error">{{ $message }}</span>
                             @enderror

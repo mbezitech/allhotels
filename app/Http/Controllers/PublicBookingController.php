@@ -15,7 +15,7 @@ class PublicBookingController extends Controller
      * Show public booking page for a room
      * URL: /book/{hotel_slug}/{room_id}
      */
-    public function show(string $hotelSlug, int $roomId)
+    public function show(string $hotelSlug, int $roomId, Request $request)
     {
         $hotel = Hotel::where('slug', $hotelSlug)->firstOrFail();
         $room = Room::where('id', $roomId)
@@ -24,7 +24,11 @@ class PublicBookingController extends Controller
             ->with('roomType')
             ->firstOrFail();
 
-        return view('public.booking', compact('hotel', 'room'));
+        // Get check-in and check-out dates from query parameters (if coming from search)
+        $checkIn = $request->get('check_in');
+        $checkOut = $request->get('check_out');
+
+        return view('public.booking', compact('hotel', 'room', 'checkIn', 'checkOut'));
     }
 
     /**
@@ -74,6 +78,9 @@ class PublicBookingController extends Controller
             'children' => $validated['children'] ?? 0,
             'total_amount' => $totalAmount,
             'status' => 'pending', // Guest bookings start as pending
+            'source' => 'public',
+            'created_by' => null,
+            'notes' => 'Booked via public website.',
         ]);
 
         // Always log public bookings (system log since no user is logged in)
@@ -102,6 +109,38 @@ class PublicBookingController extends Controller
             ->firstOrFail();
 
         return view('public.confirmation', compact('hotel', 'booking'));
+    }
+
+    /**
+     * Show public room search page
+     * URL: /search/{hotel_slug}
+     */
+    public function search(string $hotelSlug, Request $request)
+    {
+        $hotel = Hotel::where('slug', $hotelSlug)->firstOrFail();
+        
+        $checkIn = $request->get('check_in');
+        $checkOut = $request->get('check_out');
+        $availableRooms = collect();
+        
+        if ($checkIn && $checkOut) {
+            $request->validate([
+                'check_in' => 'required|date|after_or_equal:today',
+                'check_out' => 'required|date|after:check_in',
+            ]);
+            
+            // Get all available rooms for the selected dates
+            $rooms = Room::where('hotel_id', $hotel->id)
+                ->where('status', 'available')
+                ->with('roomType')
+                ->get();
+            
+            $availableRooms = $rooms->filter(function ($room) use ($checkIn, $checkOut) {
+                return $room->isAvailableForDates($checkIn, $checkOut);
+            });
+        }
+        
+        return view('public.search', compact('hotel', 'availableRooms', 'checkIn', 'checkOut'));
     }
 
     /**

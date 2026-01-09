@@ -15,6 +15,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\LinkController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,7 @@ Route::get('/', function () {
 });
 
 // Public booking routes (no authentication required)
+Route::get('/search/{hotel_slug}', [\App\Http\Controllers\PublicBookingController::class, 'search'])->name('public.search');
 Route::get('/book/{hotel_slug}/{room_id}', [\App\Http\Controllers\PublicBookingController::class, 'show'])->name('public.booking.show');
 Route::post('/book/{hotel_slug}/{room_id}', [\App\Http\Controllers\PublicBookingController::class, 'store'])->name('public.booking.store');
 Route::get('/book/{hotel_slug}/confirmation/{booking_reference}', [\App\Http\Controllers\PublicBookingController::class, 'confirmation'])->name('public.booking.confirmation');
@@ -163,6 +165,11 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
         Route::get('/housekeeping-reports/staff-performance', [HousekeepingReportController::class, 'staffPerformance'])->name('housekeeping-reports.staff-performance');
         Route::get('/housekeeping-reports/pending-tasks', [HousekeepingReportController::class, 'pendingTasks'])->name('housekeeping-reports.pending-tasks');
         Route::get('/housekeeping-reports/issues', [HousekeepingReportController::class, 'issuesReport'])->name('housekeeping-reports.issues');
+    });
+
+    // Link References (public links for the current hotel)
+    Route::middleware('permission:rooms.view')->group(function () {
+        Route::get('/links', [LinkController::class, 'index'])->name('links.index');
     });
 
     // Tasks Management (Housekeeping & Maintenance)

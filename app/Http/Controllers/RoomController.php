@@ -15,12 +15,14 @@ class RoomController extends Controller
     public function index()
     {
         $hotelId = session('hotel_id');
+        $hotel = \App\Models\Hotel::findOrFail($hotelId);
         $rooms = Room::where('hotel_id', $hotelId)
+            ->with('roomType')
             ->withCount('bookings')
             ->orderBy('room_number')
             ->get();
 
-        return view('rooms.index', compact('rooms'));
+        return view('rooms.index', compact('rooms', 'hotel'));
     }
 
     /**
