@@ -11,14 +11,38 @@ class RoomTypeController extends Controller
     /**
      * Display a listing of room types for current hotel
      */
-    public function index()
+    public function index(Request $request)
     {
         $hotelId = session('hotel_id');
-        $roomTypes = RoomType::where('hotel_id', $hotelId)
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // Super admins can see all room types, others only their hotel
+        $query = RoomType::query();
+        if (!$isSuperAdmin) {
+            if (!$hotelId) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Please select a hotel to view room types.');
+            }
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+            $selectedHotelId = $request->hotel_id;
+        } else {
+            $selectedHotelId = $hotelId;
+        }
+        
+        $roomTypes = $query->with('hotel')
+            ->orderBy('hotel_id')
             ->orderBy('name')
             ->get();
 
-        return view('room-types.index', compact('roomTypes'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
+
+        return view('room-types.index', compact('roomTypes', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
@@ -158,6 +182,11 @@ class RoomTypeController extends Controller
      */
     private function authorizeHotel(RoomType $roomType)
     {
+        // Super admins can access any room type
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($roomType->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this room type.');
         }

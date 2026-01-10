@@ -12,17 +12,43 @@ class RoomController extends Controller
     /**
      * Display a listing of rooms for current hotel
      */
-    public function index()
+    public function index(Request $request)
     {
         $hotelId = session('hotel_id');
-        $hotel = \App\Models\Hotel::findOrFail($hotelId);
-        $rooms = Room::where('hotel_id', $hotelId)
-            ->with('roomType')
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // Super admins can see all rooms, others only their hotel
+        $query = Room::query();
+        if (!$isSuperAdmin) {
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+            $selectedHotelId = $request->hotel_id;
+        } else {
+            $selectedHotelId = $hotelId;
+        }
+        
+        $rooms = $query->with(['roomType', 'hotel'])
             ->withCount('bookings')
+            ->orderBy('hotel_id')
             ->orderBy('room_number')
             ->get();
 
-        return view('rooms.index', compact('rooms', 'hotel'));
+        // Get hotel for display (selected hotel for super admin, or current hotel)
+        // For super admins, if no hotel selected, use first room's hotel or null
+        if ($isSuperAdmin && !$selectedHotelId && $rooms->count() > 0) {
+            $hotel = $rooms->first()->hotel;
+        } else {
+            $hotel = $selectedHotelId ? \App\Models\Hotel::find($selectedHotelId) : null;
+        }
+        
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
+
+        return view('rooms.index', compact('rooms', 'hotel', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
@@ -206,6 +232,11 @@ class RoomController extends Controller
      */
     private function authorizeHotel(Room $room)
     {
+        // Super admins can access any room
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($room->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this room.');
         }

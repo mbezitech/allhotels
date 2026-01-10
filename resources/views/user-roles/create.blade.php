@@ -69,11 +69,31 @@
 @endpush
 
 @section('content')
+@if(isset($isSuperAdmin) && $isSuperAdmin && isset($allHotels) && $allHotels->count() > 0)
+    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>Current Hotel:</strong> {{ $hotel->name }}
+            </div>
+            <select onchange="if(this.value) window.location.href='{{ route('user-roles.create') }}?hotel_id='+this.value" 
+                    style="padding: 8px 16px; border: 2px solid #667eea; border-radius: 6px; background: white; cursor: pointer;">
+                <option value="">Switch Hotel...</option>
+                @foreach($allHotels as $h)
+                    <option value="{{ $h->id }}" {{ $h->id == $hotel->id ? 'selected' : '' }}>{{ $h->name }}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+@endif
+
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px; margin-bottom: 20px;">Assign New Role</h2>
     
     <form method="POST" action="{{ route('user-roles.store') }}">
         @csrf
+        @if(isset($isSuperAdmin) && $isSuperAdmin)
+            <input type="hidden" name="hotel_id" value="{{ $hotel->id }}">
+        @endif
 
         <div class="form-group">
             <label for="user_id">User *</label>

@@ -6,6 +6,7 @@ use App\Models\Task;
 use App\Models\Room;
 use App\Models\Booking;
 use App\Models\User;
+use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,9 +18,27 @@ class TaskController extends Controller
     public function index(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        $query = Task::where('hotel_id', $hotelId)
-            ->with('room', 'assignedTo', 'createdBy');
+        // Super admins can see all tasks, others only their hotel
+        $query = Task::query();
+        if (!$isSuperAdmin) {
+            if (!$hotelId) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Please select a hotel to view tasks.');
+            }
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+            $selectedHotelId = $request->hotel_id;
+        } else {
+            $selectedHotelId = $hotelId;
+        }
+
+        $query->with('room', 'assignedTo', 'createdBy', 'hotel');
 
         // Filter by type
         if ($request->has('type') && $request->type) {
@@ -47,10 +66,23 @@ class TaskController extends Controller
         }
 
         $tasks = $query->orderBy('created_at', 'desc')->paginate(20);
-        $rooms = Room::where('hotel_id', $hotelId)->orderBy('room_number')->get();
+        
+        // Get rooms for filter dropdown (scoped to selected hotel or all for super admin)
+        $roomsQuery = Room::query();
+        if ($selectedHotelId && !$isSuperAdmin) {
+            $roomsQuery->where('hotel_id', $selectedHotelId);
+        } elseif ($isSuperAdmin && $selectedHotelId) {
+            $roomsQuery->where('hotel_id', $selectedHotelId);
+        }
+        // If super admin and no hotel selected, show all rooms
+        $rooms = $roomsQuery->orderBy('room_number')->get();
+        
         $users = User::all();
+        
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
 
-        return view('tasks.index', compact('tasks', 'rooms', 'users'));
+        return view('tasks.index', compact('tasks', 'rooms', 'users', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
@@ -59,14 +91,35 @@ class TaskController extends Controller
     public function create(Request $request)
     {
         $hotelId = session('hotel_id');
-        $rooms = Room::where('hotel_id', $hotelId)->orderBy('room_number')->get();
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // For super admins, allow selecting hotel or use session hotel
+        $selectedHotelId = $request->get('hotel_id', $hotelId);
+        
+        $roomsQuery = Room::query();
+        if ($selectedHotelId) {
+            $roomsQuery->where('hotel_id', $selectedHotelId);
+        } elseif (!$isSuperAdmin) {
+            // Regular users must have a hotel
+            if (!$hotelId) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Please select a hotel to create a task.');
+            }
+            $roomsQuery->where('hotel_id', $hotelId);
+        }
+        // If super admin and no hotel selected, show all rooms
+        $rooms = $roomsQuery->orderBy('room_number')->get();
+        
         $users = User::all();
         
         // Pre-select room if provided
         $roomId = $request->get('room_id');
         $bookingId = $request->get('booking_id');
+        
+        // Get all hotels for super admin
+        $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
 
-        return view('tasks.create', compact('rooms', 'users', 'roomId', 'bookingId'));
+        return view('tasks.create', compact('rooms', 'users', 'roomId', 'bookingId', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
@@ -88,23 +141,29 @@ class TaskController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Verify room belongs to hotel if provided
+        // Verify room belongs to hotel if provided (unless super admin)
         if ($validated['room_id']) {
             $room = Room::findOrFail($validated['room_id']);
-            if ($room->hotel_id != $hotelId) {
+            if (!auth()->user()->isSuperAdmin() && $room->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this room.');
             }
         }
 
-        // Verify booking belongs to hotel if provided
+        // Verify booking belongs to hotel if provided (unless super admin)
         if ($validated['booking_id']) {
             $booking = Booking::findOrFail($validated['booking_id']);
-            if ($booking->hotel_id != $hotelId) {
+            if (!auth()->user()->isSuperAdmin() && $booking->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this booking.');
             }
         }
 
-        $validated['hotel_id'] = $hotelId;
+        // For super admins, use hotel_id from request if provided, otherwise use session
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        $taskHotelId = $request->get('hotel_id', $hotelId);
+        if (!$isSuperAdmin || !$taskHotelId) {
+            $taskHotelId = $hotelId;
+        }
+        $validated['hotel_id'] = $taskHotelId;
         $validated['created_by'] = Auth::id();
 
         $task = Task::create($validated);
@@ -137,7 +196,18 @@ class TaskController extends Controller
     {
         $this->authorizeHotel($task);
         $hotelId = session('hotel_id');
-        $rooms = Room::where('hotel_id', $hotelId)->orderBy('room_number')->get();
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // Super admins can see all rooms, others only their hotel's rooms
+        $roomsQuery = Room::query();
+        if (!$isSuperAdmin) {
+            $roomsQuery->where('hotel_id', $hotelId);
+        } else {
+            // For super admins, show rooms from the task's hotel
+            $roomsQuery->where('hotel_id', $task->hotel_id);
+        }
+        $rooms = $roomsQuery->orderBy('room_number')->get();
+        
         $users = User::all();
         return view('tasks.edit', compact('task', 'rooms', 'users'));
     }
@@ -163,10 +233,10 @@ class TaskController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Verify room belongs to hotel if provided
+        // Verify room belongs to hotel if provided (unless super admin)
         if ($validated['room_id']) {
             $room = Room::findOrFail($validated['room_id']);
-            if ($room->hotel_id != $hotelId) {
+            if (!auth()->user()->isSuperAdmin() && $room->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this room.');
             }
         }
@@ -237,6 +307,11 @@ class TaskController extends Controller
      */
     private function authorizeHotel(Task $task)
     {
+        // Super admins can access any task
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($task->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this task.');
         }

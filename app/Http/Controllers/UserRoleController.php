@@ -15,7 +15,31 @@ class UserRoleController extends Controller
      */
     public function create(Request $request)
     {
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         $hotelId = session('hotel_id');
+        
+        // For super admins, allow hotel selection via request parameter
+        if ($isSuperAdmin && $request->has('hotel_id')) {
+            $hotelId = $request->get('hotel_id');
+            session(['hotel_id' => $hotelId]);
+        }
+        
+        // Super admins can view all hotels, others need hotel context
+        $allHotels = collect();
+        if ($isSuperAdmin) {
+            $allHotels = Hotel::orderBy('name')->get();
+            if (!$hotelId && $allHotels->count() > 0) {
+                // If no hotel selected, show hotel selector
+                return view('user-roles.select-hotel', compact('allHotels'));
+            }
+        }
+        
+        // If still no hotel_id, redirect or show error
+        if (!$hotelId) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Please select a hotel to manage user roles.');
+        }
+        
         $hotel = Hotel::findOrFail($hotelId);
         
         // Get all users (they can be assigned roles)
@@ -43,7 +67,7 @@ class UserRoleController extends Controller
         
         $roles = Role::all();
         
-        return view('user-roles.create', compact('hotel', 'users', 'usersWithRoles', 'roles'));
+        return view('user-roles.create', compact('hotel', 'users', 'usersWithRoles', 'roles', 'isSuperAdmin', 'allHotels'));
     }
 
     /**
@@ -57,6 +81,16 @@ class UserRoleController extends Controller
         ]);
 
         $hotelId = session('hotel_id');
+        
+        // For super admins, allow hotel selection via request parameter
+        if (auth()->user()->isSuperAdmin() && $request->has('hotel_id')) {
+            $hotelId = $request->get('hotel_id');
+            session(['hotel_id' => $hotelId]);
+        }
+        
+        if (!$hotelId) {
+            return back()->with('error', 'Please select a hotel.');
+        }
 
         // Check if user already has this role in this hotel
         $exists = DB::table('user_roles')
@@ -87,6 +121,10 @@ class UserRoleController extends Controller
     public function destroy(Request $request, User $user, Role $role)
     {
         $hotelId = session('hotel_id');
+        
+        if (!$hotelId) {
+            return back()->with('error', 'Please select a hotel.');
+        }
 
         DB::table('user_roles')
             ->where('user_id', $user->id)

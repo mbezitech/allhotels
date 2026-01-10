@@ -5,20 +5,325 @@
 
 @section('content')
 @if(!$hotel && auth()->user()->isSuperAdmin())
-    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
-        <h3 style="color: #856404; margin-bottom: 10px;">Super Admin Mode</h3>
-        <p style="color: #856404; margin-bottom: 15px;">You are logged in as a Super Admin. Select a hotel from the list below to view its dashboard, or use the navigation menu to manage hotels.</p>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-            @foreach(\App\Models\Hotel::all() as $h)
-                <a href="{{ route('login') }}?hotel_id={{ $h->id }}" style="display: block; padding: 15px; background: white; border: 2px solid #667eea; border-radius: 8px; text-decoration: none; color: #333;">
-                    <strong>{{ $h->name }}</strong>
-                    @if($h->address)
-                        <div style="font-size: 12px; color: #666; margin-top: 5px;">{{ $h->address }}</div>
-                    @endif
-                </a>
-            @endforeach
+    <!-- Super Admin Dashboard -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 30px; margin-bottom: 30px; color: white;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h2 style="color: white; margin: 0 0 5px 0; font-size: 28px;">Super Admin Dashboard</h2>
+                <p style="color: rgba(255,255,255,0.9); margin: 0;">System-wide overview and statistics</p>
+            </div>
+            <a href="{{ route('hotels.create') }}" style="padding: 12px 24px; background: white; color: #667eea; border-radius: 8px; text-decoration: none; font-weight: 500; white-space: nowrap;">
+                + Add New Hotel
+            </a>
         </div>
     </div>
+
+    <!-- Key Statistics Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #666; font-size: 14px; font-weight: 500;">Total Hotels</h3>
+                <div style="width: 40px; height: 40px; background: #e3f2fd; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 20px;">🏨</span>
+                </div>
+            </div>
+            <div style="font-size: 32px; font-weight: bold; color: #333;">{{ $totalHotels ?? 0 }}</div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">Active properties</div>
+        </div>
+
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #666; font-size: 14px; font-weight: 500;">Total Users</h3>
+                <div style="width: 40px; height: 40px; background: #f3e5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 20px;">👥</span>
+                </div>
+            </div>
+            <div style="font-size: 32px; font-weight: bold; color: #333;">{{ $totalUsers ?? 0 }}</div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">{{ $totalRegularUsers ?? 0 }} regular, {{ $totalSuperAdmins ?? 0 }} admin</div>
+        </div>
+
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #666; font-size: 14px; font-weight: 500;">Total Rooms</h3>
+                <div style="width: 40px; height: 40px; background: #e8f5e9; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 20px;">🛏️</span>
+                </div>
+            </div>
+            <div style="font-size: 32px; font-weight: bold; color: #333;">{{ $totalRooms ?? 0 }}</div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">{{ $occupiedRooms ?? 0 }} occupied, {{ $availableRooms ?? 0 }} available</div>
+        </div>
+
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #666; font-size: 14px; font-weight: 500;">Occupancy Rate</h3>
+                <div style="width: 40px; height: 40px; background: #fff3cd; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 20px;">📊</span>
+                </div>
+            </div>
+            <div style="font-size: 32px; font-weight: bold; color: #333;">{{ $occupancyRate ?? 0 }}%</div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">System-wide average</div>
+        </div>
+
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #666; font-size: 14px; font-weight: 500;">Total Bookings</h3>
+                <div style="width: 40px; height: 40px; background: #e1f5fe; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 20px;">📅</span>
+                </div>
+            </div>
+            <div style="font-size: 32px; font-weight: bold; color: #333;">{{ $allBookings ?? 0 }}</div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">{{ $pendingBookings ?? 0 }} pending</div>
+        </div>
+
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #666; font-size: 14px; font-weight: 500;">Total Sales</h3>
+                <div style="width: 40px; height: 40px; background: #d4edda; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 20px;">💰</span>
+                </div>
+            </div>
+            <div style="font-size: 32px; font-weight: bold; color: #333;">${{ number_format($totalSales ?? 0, 2) }}</div>
+            <div style="font-size: 12px; color: #999; margin-top: 5px;">{{ $totalSalesCount ?? 0 }} transactions</div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px;">
+        <!-- Sales Chart -->
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Sales Trend (Last 7 Days)</h3>
+            <canvas id="salesChart" style="max-height: 300px;"></canvas>
+        </div>
+
+        <!-- Bookings Chart -->
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Bookings Trend (Last 7 Days)</h3>
+            <canvas id="bookingsChart" style="max-height: 300px;"></canvas>
+        </div>
+    </div>
+
+    <!-- Today's Activity & Top Hotels -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+        <!-- Today's Activity -->
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Today's Activity</h3>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <div>
+                        <div style="font-weight: 500; color: #333;">Check-ins</div>
+                        <div style="font-size: 12px; color: #999;">Guests arriving</div>
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #4caf50;">{{ $todayCheckIns ?? 0 }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <div>
+                        <div style="font-weight: 500; color: #333;">Check-outs</div>
+                        <div style="font-size: 12px; color: #999;">Guests leaving</div>
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #ff9800;">{{ $todayCheckOuts ?? 0 }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <div>
+                        <div style="font-weight: 500; color: #333;">Today's Sales</div>
+                        <div style="font-size: 12px; color: #999;">Revenue</div>
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #2196f3;">${{ number_format($todaySales ?? 0, 2) }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                    <div>
+                        <div style="font-weight: 500; color: #333;">Today's Payments</div>
+                        <div style="font-size: 12px; color: #999;">Received</div>
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #9c27b0;">${{ number_format($todayPayments ?? 0, 2) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Hotels by Bookings -->
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Top Hotels by Bookings</h3>
+            @if(isset($topHotels) && $topHotels->count() > 0)
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    @foreach($topHotels as $index => $h)
+                        <div style="padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600; color: #333;">#{{ $index + 1 }} {{ $h->name }}</div>
+                                    <div style="font-size: 12px; color: #666;">{{ $h->address ?? 'No address' }}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 20px; font-weight: bold; color: #667eea;">{{ $h->bookings_count }}</div>
+                                    <div style="font-size: 11px; color: #999;">bookings</div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p style="color: #999; text-align: center; padding: 20px;">No data available</p>
+            @endif
+        </div>
+
+        <!-- Hotels by Rooms -->
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Hotels by Room Count</h3>
+            @if(isset($hotelsByRooms) && $hotelsByRooms->count() > 0)
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    @foreach($hotelsByRooms as $index => $h)
+                        <div style="padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 600; color: #333;">#{{ $index + 1 }} {{ $h->name }}</div>
+                                    <div style="font-size: 12px; color: #666;">{{ $h->address ?? 'No address' }}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 20px; font-weight: bold; color: #4caf50;">{{ $h->rooms_count }}</div>
+                                    <div style="font-size: 11px; color: #999;">rooms</div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p style="color: #999; text-align: center; padding: 20px;">No data available</p>
+            @endif
+        </div>
+    </div>
+
+    <!-- Recent Bookings & Hotel List -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px;">
+        <!-- Recent Bookings -->
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #333; font-size: 18px;">Recent Bookings</h3>
+                <a href="{{ route('activity-logs.index') }}" style="color: #667eea; text-decoration: none; font-size: 14px;">View All</a>
+            </div>
+            @if(isset($recentBookings) && $recentBookings->count() > 0)
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    @foreach($recentBookings as $booking)
+                        <div style="padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid {{ $booking->status === 'cancelled' ? '#dc3545' : ($booking->status === 'pending' ? '#ffc107' : '#667eea') }};">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 5px;">
+                                <div>
+                                    <div style="font-weight: 500; color: #333;">{{ $booking->guest_name }}</div>
+                                    <div style="font-size: 12px; color: #999;">{{ $booking->hotel->name ?? 'Unknown Hotel' }} • Room {{ $booking->room->room_number ?? 'N/A' }}</div>
+                                    <div style="font-size: 11px; color: #999; margin-top: 2px;">
+                                        {{ $booking->created_at->format('M d, Y h:i A') }}
+                                    </div>
+                                </div>
+                                <span style="font-size: 12px; padding: 4px 8px; background: {{ $booking->status === 'cancelled' ? '#f8d7da' : ($booking->status === 'pending' ? '#fff3cd' : '#e3f2fd') }}; color: {{ $booking->status === 'cancelled' ? '#721c24' : ($booking->status === 'pending' ? '#856404' : '#1976d2') }}; border-radius: 4px;">
+                                    {{ ucfirst(str_replace('_', ' ', $booking->status)) }}
+                                </span>
+                            </div>
+                            <div style="font-size: 12px; color: #666;">
+                                {{ $booking->check_in->format('M d') }} - {{ $booking->check_out->format('M d, Y') }}
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p style="color: #999; text-align: center; padding: 20px;">No recent bookings</p>
+            @endif
+        </div>
+
+        <!-- All Hotels List -->
+        <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #333; font-size: 18px;">All Hotels</h3>
+                <a href="{{ route('hotels.index') }}" style="color: #667eea; text-decoration: none; font-size: 14px;">Manage</a>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
+                @foreach(\App\Models\Hotel::orderBy('name')->get() as $h)
+                    <a href="{{ route('login') }}?hotel_id={{ $h->id }}" style="display: block; padding: 15px; background: #f8f9fa; border: 2px solid #e0e0e0; border-radius: 8px; text-decoration: none; color: #333; transition: all 0.3s; hover:border-color: #667eea;">
+                        <div style="font-weight: 600; color: #333; margin-bottom: 5px;">{{ $h->name }}</div>
+                        @if($h->address)
+                            <div style="font-size: 12px; color: #666;">{{ $h->address }}</div>
+                        @endif
+                        @if($h->owner)
+                            <div style="font-size: 11px; color: #999; margin-top: 3px;">Owner: {{ $h->owner->name }}</div>
+                        @endif
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Sales Chart
+        const salesCtx = document.getElementById('salesChart');
+        if (salesCtx) {
+            new Chart(salesCtx, {
+                type: 'line',
+                data: {
+                    labels: @json($salesChartLabels ?? []),
+                    datasets: [{
+                        label: 'Sales ($)',
+                        data: @json($salesChartData ?? []),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Bookings Chart
+        const bookingsCtx = document.getElementById('bookingsChart');
+        if (bookingsCtx) {
+            new Chart(bookingsCtx, {
+                type: 'bar',
+                data: {
+                    labels: @json($bookingsChartLabels ?? []),
+                    datasets: [{
+                        label: 'Bookings',
+                        data: @json($bookingsChartData ?? []),
+                        backgroundColor: '#4caf50',
+                        borderColor: '#4caf50',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+    @endpush
 @endif
 
 @if($hotel)

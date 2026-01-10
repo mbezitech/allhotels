@@ -17,6 +17,7 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\LinkController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
 
@@ -40,6 +41,11 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 // Access control is handled in HotelController constructor
 Route::middleware('auth')->group(function () {
     Route::resource('hotels', HotelController::class);
+    Route::post('/hotels/switch', [HotelController::class, 'switchHotel'])->name('hotels.switch');
+    Route::post('/hotels/{hotel}/switch', [HotelController::class, 'switchHotel'])->name('hotels.switch.hotel');
+    
+    // User Management (super admin only)
+    Route::resource('users', UserController::class);
 });
 
 // Protected routes (require authentication and hotel context)

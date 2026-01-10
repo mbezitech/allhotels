@@ -79,6 +79,29 @@
     @endif
 </div>
 
+@if(isset($isSuperAdmin) && $isSuperAdmin && isset($hotels) && $hotels->count() > 0)
+    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <form method="GET" action="{{ route('extras.index') }}" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px;">Filter by Hotel:</label>
+                <select name="hotel_id" onchange="this.form.submit()" style="padding: 8px 16px; border: 2px solid #667eea; border-radius: 6px; background: white; cursor: pointer; min-width: 200px;">
+                    <option value="">All Hotels</option>
+                    @foreach($hotels as $h)
+                        <option value="{{ $h->id }}" {{ request('hotel_id') == $h->id ? 'selected' : '' }}>
+                            {{ $h->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @if(request('hotel_id'))
+                <a href="{{ route('extras.index') }}" style="padding: 8px 16px; background: #95a5a6; color: white; border-radius: 6px; text-decoration: none; font-size: 14px;">
+                    Clear Filter
+                </a>
+            @endif
+        </form>
+    </div>
+@endif
+
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
@@ -94,6 +117,9 @@
     <table>
                 <thead>
                     <tr>
+                        @if(isset($isSuperAdmin) && $isSuperAdmin)
+                        <th>Hotel</th>
+                        @endif
                         <th>Name</th>
                         <th>Category</th>
                         <th>Price</th>
@@ -107,9 +133,17 @@
                 <tbody>
                     @forelse($extras as $extra)
                         <tr>
+                            @if(isset($isSuperAdmin) && $isSuperAdmin)
+                            <td>
+                                <strong style="color: #667eea;">{{ $extra->hotel->name ?? 'Unknown Hotel' }}</strong>
+                                @if($extra->hotel && $extra->hotel->address)
+                                    <div style="font-size: 11px; color: #999; margin-top: 2px;">{{ \Illuminate\Support\Str::limit($extra->hotel->address, 30) }}</div>
+                                @endif
+                            </td>
+                            @endif
                             <td><strong>{{ $extra->name }}</strong></td>
                             <td>
-                                @if($extra->category && is_object($extra->category))
+                                @if($extra->category_id && $extra->category)
                                     <span class="category-badge">{{ $extra->category->name }}</span>
                                 @else
                                     <span class="category-badge" style="background: #f8d7da; color: #721c24;">No Category</span>
@@ -175,7 +209,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="text-align: center; color: #999; padding: 40px;">No products found</td>
+                            <td colspan="{{ (isset($isSuperAdmin) && $isSuperAdmin) ? '9' : '8' }}" style="text-align: center; color: #999; padding: 40px;">No products found</td>
                         </tr>
                     @endforelse
                 </tbody>

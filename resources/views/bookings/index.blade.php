@@ -100,6 +100,21 @@
         <!-- Filters Panel -->
         <div id="filtersPanel" style="display: none; border-top: 1px solid #e0e0e0; padding-top: 20px;">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                @if(isset($isSuperAdmin) && $isSuperAdmin && isset($hotels))
+                <!-- Hotel Filter (Super Admin Only) -->
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px;">Hotel</label>
+                    <select name="hotel_id" style="width: 100%; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                        <option value="">All Hotels</option>
+                        @foreach($hotels as $h)
+                            <option value="{{ $h->id }}" {{ request('hotel_id') == $h->id ? 'selected' : '' }}>
+                                {{ $h->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
                 <!-- Status Filter -->
                 <div>
                     <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px;">Status</label>
@@ -199,10 +214,18 @@
     </form>
 
     <!-- Active Filters Display -->
-    @if(request()->hasAny(['status', 'room_id', 'source', 'check_in_from', 'check_in_to', 'check_out_from', 'check_out_to', 'booking_date_from', 'booking_date_to']))
+    @if(request()->hasAny(['hotel_id', 'status', 'room_id', 'source', 'check_in_from', 'check_in_to', 'check_out_from', 'check_out_to', 'booking_date_from', 'booking_date_to']))
         <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
             <div style="font-size: 13px; color: #666; margin-bottom: 8px;">Active Filters:</div>
             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                @if(isset($isSuperAdmin) && $isSuperAdmin && request('hotel_id'))
+                    @php $selectedHotel = isset($hotels) ? $hotels->firstWhere('id', request('hotel_id')) : null; @endphp
+                    @if($selectedHotel)
+                        <span style="background: #e3f2fd; color: #1976d2; padding: 4px 10px; border-radius: 4px; font-size: 12px;">
+                            Hotel: {{ $selectedHotel->name }}
+                        </span>
+                    @endif
+                @endif
                 @if(request('status'))
                     <span style="background: #e3f2fd; color: #1976d2; padding: 4px 10px; border-radius: 4px; font-size: 12px;">
                         Status: {{ ucfirst(request('status')) }}
@@ -245,6 +268,9 @@
     <table>
         <thead>
             <tr>
+                @if(isset($isSuperAdmin) && $isSuperAdmin)
+                <th>Hotel</th>
+                @endif
                 <th>Guest Name</th>
                 <th>Room</th>
                 <th>Check In</th>
@@ -263,8 +289,16 @@
         <tbody>
             @forelse($bookings as $booking)
                 <tr>
+                    @if(isset($isSuperAdmin) && $isSuperAdmin)
+                    <td>
+                        <strong style="color: #667eea;">{{ $booking->hotel->name ?? 'Unknown Hotel' }}</strong>
+                        @if($booking->hotel && $booking->hotel->address)
+                            <div style="font-size: 11px; color: #999; margin-top: 2px;">{{ \Illuminate\Support\Str::limit($booking->hotel->address, 30) }}</div>
+                        @endif
+                    </td>
+                    @endif
                     <td><strong>{{ $booking->guest_name }}</strong></td>
-                    <td>{{ $booking->room->room_number }}</td>
+                    <td>{{ $booking->room->room_number ?? 'N/A' }}</td>
                     <td>{{ $booking->check_in->format('M d, Y') }}</td>
                     <td>{{ $booking->check_out->format('M d, Y') }}</td>
                     <td>{{ $booking->nights }}</td>
@@ -340,7 +374,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="13" style="text-align: center; color: #999; padding: 40px;">No bookings found</td>
+                    <td colspan="{{ (isset($isSuperAdmin) && $isSuperAdmin) ? '14' : '13' }}" style="text-align: center; color: #999; padding: 40px;">No bookings found</td>
                 </tr>
             @endforelse
         </tbody>

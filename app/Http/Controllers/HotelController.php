@@ -55,10 +55,20 @@ class HotelController extends Controller
 
         $hotel = Hotel::create($validated);
         
+        // Automatically assign admin role to the owner for this hotel
+        $adminRole = \App\Models\Role::where('slug', 'admin')->first();
+        if ($adminRole) {
+            $owner = \App\Models\User::findOrFail($validated['owner_id']);
+            // Check if role is already assigned
+            if (!$owner->roles()->wherePivot('hotel_id', $hotel->id)->wherePivot('role_id', $adminRole->id)->exists()) {
+                $owner->roles()->attach($adminRole->id, ['hotel_id' => $hotel->id]);
+            }
+        }
+        
         logActivity('created', $hotel, "Created hotel: {$hotel->name}");
 
         return redirect()->route('hotels.index')
-            ->with('success', 'Hotel created successfully.');
+            ->with('success', 'Hotel created successfully. Owner has been assigned the Admin role.');
     }
 
     /**
@@ -133,5 +143,28 @@ class HotelController extends Controller
 
         return redirect()->route('hotels.index')
             ->with('success', 'Hotel deleted successfully.');
+    }
+
+    /**
+     * Switch to a different hotel (super admin only)
+     */
+    public function switchHotel(Request $request, $hotel = null)
+    {
+        $this->ensureSuperAdmin();
+        
+        $hotelId = $request->input('hotel_id') ?? $hotel;
+        
+        if ($hotelId) {
+            $hotel = Hotel::findOrFail($hotelId);
+            session(['hotel_id' => $hotel->id]);
+            logActivity('hotel_switched', $hotel, "Switched to hotel: {$hotel->name}", [
+                'hotel_id' => $hotel->id,
+            ]);
+            return redirect()->back()->with('success', "Switched to {$hotel->name}");
+        } else {
+            // Clear hotel selection
+            session()->forget('hotel_id');
+            return redirect()->back()->with('success', "Hotel context cleared");
+        }
     }
 }

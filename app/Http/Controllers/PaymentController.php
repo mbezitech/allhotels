@@ -16,9 +16,20 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        $query = Payment::where('hotel_id', $hotelId)
-            ->with('booking', 'posSale', 'receivedBy');
+        // Super admins can see all payments, others only their hotel
+        $query = Payment::query();
+        if (!$isSuperAdmin) {
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+        }
+        
+        $query->with(['booking', 'posSale', 'receivedBy', 'hotel']);
 
         // Filter by booking
         if ($request->has('booking_id') && $request->booking_id) {
@@ -45,7 +56,10 @@ class PaymentController extends Controller
 
         $payments = $query->orderBy('paid_at', 'desc')->paginate(20);
 
-        return view('payments.index', compact('payments'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
+
+        return view('payments.index', compact('payments', 'hotels', 'isSuperAdmin'));
     }
 
     /**
@@ -104,7 +118,7 @@ class PaymentController extends Controller
         // Verify booking or POS sale belongs to hotel
         if ($bookingId) {
             $booking = Booking::findOrFail($bookingId);
-            if ($booking->hotel_id != $hotelId) {
+            if (!auth()->user()->isSuperAdmin() && $booking->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this booking.');
             }
 
@@ -123,7 +137,7 @@ class PaymentController extends Controller
 
         if ($posSaleId) {
             $posSale = PosSale::findOrFail($posSaleId);
-            if ($posSale->hotel_id != $hotelId) {
+            if (!auth()->user()->isSuperAdmin() && $posSale->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this POS sale.');
             }
             
@@ -213,6 +227,11 @@ class PaymentController extends Controller
      */
     private function authorizeHotel(Payment $payment)
     {
+        // Super admins can access any payment
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($payment->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this payment.');
         }

@@ -98,6 +98,19 @@
 
 <div class="filters">
     <form method="GET" action="{{ route('tasks.index') }}" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+        @if(isset($isSuperAdmin) && $isSuperAdmin && isset($hotels) && $hotels->count() > 0)
+        <div class="filter-group">
+            <label>Hotel</label>
+            <select name="hotel_id" onchange="this.form.submit()">
+                <option value="">All Hotels</option>
+                @foreach($hotels as $h)
+                    <option value="{{ $h->id }}" {{ (isset($selectedHotelId) && $selectedHotelId == $h->id) || request('hotel_id') == $h->id ? 'selected' : '' }}>
+                        {{ $h->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        @endif
         <div class="filter-group">
             <label>Type</label>
             <select name="type" onchange="this.form.submit()">
@@ -149,7 +162,7 @@
                 @endforeach
             </select>
         </div>
-        @if(request()->hasAny(['type', 'status', 'priority', 'room_id', 'assigned_to']))
+        @if(request()->hasAny(['type', 'status', 'priority', 'room_id', 'assigned_to', 'hotel_id']))
             <div class="filter-group">
                 <a href="{{ route('tasks.index') }}" class="btn" style="background: #95a5a6; color: white;">Clear Filters</a>
             </div>
@@ -167,6 +180,9 @@
     <table>
         <thead>
             <tr>
+                @if(isset($isSuperAdmin) && $isSuperAdmin)
+                <th>Hotel</th>
+                @endif
                 <th>Title</th>
                 <th>Type</th>
                 <th>Room</th>
@@ -180,6 +196,14 @@
         <tbody>
             @forelse($tasks as $task)
                 <tr>
+                    @if(isset($isSuperAdmin) && $isSuperAdmin)
+                    <td>
+                        <strong style="color: #667eea;">{{ $task->hotel->name ?? 'Unknown Hotel' }}</strong>
+                        @if($task->hotel && $task->hotel->address)
+                            <div style="font-size: 11px; color: #999; margin-top: 2px;">{{ \Illuminate\Support\Str::limit($task->hotel->address, 30) }}</div>
+                        @endif
+                    </td>
+                    @endif
                     <td>
                         <strong>{{ $task->title }}</strong>
                         @if($task->isOverdue())
@@ -236,7 +260,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" style="text-align: center; color: #999; padding: 40px;">No tasks found</td>
+                    <td colspan="{{ (isset($isSuperAdmin) && $isSuperAdmin) ? '9' : '8' }}" style="text-align: center; color: #999; padding: 40px;">No tasks found</td>
                 </tr>
             @endforelse
         </tbody>

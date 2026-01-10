@@ -143,13 +143,23 @@
             <select name="user_id" onchange="this.form.submit()">
                 <option value="">All Users</option>
                 <option value="system" {{ request('user_id') == 'system' ? 'selected' : '' }}>SYSTEM</option>
+                <option value="super_admin" {{ request('user_id') == 'super_admin' ? 'selected' : '' }}>Super Admin Logins</option>
                 @foreach($users as $user)
                     <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
-                        {{ $user->name }}
+                        {{ $user->name }}@if($user->is_super_admin) (Super Admin)@endif
                     </option>
                 @endforeach
             </select>
         </div>
+        
+        @if($isSuperAdmin)
+        <div class="filter-group">
+            <label style="display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" name="super_admin_only" value="1" {{ request('super_admin_only') ? 'checked' : '' }} onchange="this.form.submit()">
+                <span>Super Admin Actions Only</span>
+            </label>
+        </div>
+        @endif
         
         <div class="filter-group">
             <label>Date From</label>
@@ -161,7 +171,7 @@
             <input type="date" name="date_to" value="{{ request('date_to') }}" onchange="this.form.submit()">
         </div>
         
-        @if(request()->hasAny(['hotel_id', 'action', 'model_type', 'user_id', 'date_from', 'date_to']))
+        @if(request()->hasAny(['hotel_id', 'action', 'model_type', 'user_id', 'date_from', 'date_to', 'super_admin_only']))
             <div class="filter-group">
                 <a href="{{ route('activity-logs.index') }}" class="btn" style="background: #95a5a6; color: white; padding: 8px 16px;">Clear Filters</a>
             </div>
@@ -190,7 +200,12 @@
                         @if($log->isSystemLog())
                             <span class="system-badge">SYSTEM</span>
                         @else
-                            {{ $log->user->name ?? 'Unknown' }}
+                            <div>
+                                {{ $log->user->name ?? 'Unknown' }}
+                                @if($log->user && $log->user->is_super_admin)
+                                    <span class="badge" style="background: #9c27b0; color: white; margin-left: 5px; font-size: 10px;">Super Admin</span>
+                                @endif
+                            </div>
                         @endif
                     </td>
                     <td>

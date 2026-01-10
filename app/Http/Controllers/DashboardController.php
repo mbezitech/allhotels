@@ -27,17 +27,78 @@ class DashboardController extends Controller
         // Super admin can view dashboard without hotel context
         if ($user->isSuperAdmin() && !$hotelId) {
             $hotel = null;
-            $totalRooms = 0;
-            $occupiedRooms = 0;
-            $availableRooms = 0;
-            $occupancyRate = 0;
-            $todayCheckIns = 0;
-            $todayCheckOuts = 0;
-            $todaySales = 0;
-            $todaySalesCount = 0;
-            $todayPayments = 0;
-            $recentBookings = collect();
-            $pendingBookings = 0;
+            $today = Carbon::today();
+            
+            // System-wide statistics
+            $totalHotels = Hotel::count();
+            $totalUsers = \App\Models\User::count();
+            $totalSuperAdmins = \App\Models\User::where('is_super_admin', true)->count();
+            $totalRegularUsers = $totalUsers - $totalSuperAdmins;
+            
+            // Rooms statistics across all hotels
+            $totalRooms = Room::count();
+            $occupiedRooms = Booking::where('check_in', '<=', $today)
+                ->where('check_out', '>', $today)
+                ->whereIn('status', ['confirmed', 'checked_in'])
+                ->count();
+            $availableRooms = $totalRooms - $occupiedRooms;
+            $occupancyRate = $totalRooms > 0 ? round(($occupiedRooms / $totalRooms) * 100, 1) : 0;
+            
+            // Bookings statistics
+            $allBookings = Booking::count();
+            $pendingBookings = Booking::where('status', 'pending')->count();
+            $cancelledBookings = Booking::where('status', 'cancelled')->count();
+            $confirmedBookings = Booking::where('status', 'confirmed')->count();
+            $todayCheckIns = Booking::whereDate('check_in', $today)->count();
+            $todayCheckOuts = Booking::whereDate('check_out', $today)->count();
+            
+            // Sales statistics
+            $todaySales = PosSale::whereDate('sale_date', $today)->sum('final_amount');
+            $todaySalesCount = PosSale::whereDate('sale_date', $today)->count();
+            $totalSales = PosSale::sum('final_amount');
+            $totalSalesCount = PosSale::count();
+            
+            // Payments statistics
+            $todayPayments = Payment::whereDate('paid_at', $today)->sum('amount');
+            $totalPayments = Payment::sum('amount');
+            
+            // Recent bookings across all hotels
+            $recentBookings = Booking::with(['room', 'createdBy', 'hotel'])
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+            
+            // Sales chart data (last 7 days)
+            $salesChartData = [];
+            $salesChartLabels = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $date = Carbon::today()->subDays($i);
+                $salesChartLabels[] = $date->format('M d');
+                $salesChartData[] = PosSale::whereDate('sale_date', $date)->sum('final_amount');
+            }
+            
+            // Bookings chart data (last 7 days)
+            $bookingsChartData = [];
+            $bookingsChartLabels = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $date = Carbon::today()->subDays($i);
+                $bookingsChartLabels[] = $date->format('M d');
+                $bookingsChartData[] = Booking::whereDate('created_at', $date)->count();
+            }
+            
+            // Hotels with most bookings
+            $topHotels = Hotel::withCount('bookings')
+                ->orderBy('bookings_count', 'desc')
+                ->limit(5)
+                ->get();
+            
+            // Hotels with most rooms
+            $hotelsByRooms = Hotel::withCount('rooms')
+                ->orderBy('rooms_count', 'desc')
+                ->limit(5)
+                ->get();
+            
+            $bookingFilter = 'all';
             $calendar = [];
             $month = now()->month;
             $year = now()->year;
@@ -46,6 +107,10 @@ class DashboardController extends Controller
             return view('dashboard', compact(
                 'hotel',
                 'user',
+                'totalHotels',
+                'totalUsers',
+                'totalSuperAdmins',
+                'totalRegularUsers',
                 'totalRooms',
                 'occupiedRooms',
                 'availableRooms',
@@ -54,16 +119,26 @@ class DashboardController extends Controller
                 'todayCheckOuts',
                 'todaySales',
                 'todaySalesCount',
+                'totalSales',
+                'totalSalesCount',
                 'todayPayments',
+                'totalPayments',
                 'recentBookings',
                 'pendingBookings',
                 'cancelledBookings',
+                'confirmedBookings',
                 'allBookings',
                 'bookingFilter',
                 'calendar',
                 'month',
                 'year',
-                'upcomingAvailable'
+                'upcomingAvailable',
+                'salesChartData',
+                'salesChartLabels',
+                'bookingsChartData',
+                'bookingsChartLabels',
+                'topHotels',
+                'hotelsByRooms'
             ));
         }
         

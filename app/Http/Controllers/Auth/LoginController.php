@@ -78,18 +78,34 @@ class LoginController extends Controller
         $request->session()->regenerate();
 
         // Log user login
-        if ($hotelId) {
-            $hotel = Hotel::find($hotelId);
-            logActivity(
-                'user_login',
-                null,
-                "User logged in: {$user->name}" . ($hotel ? " - Hotel: {$hotel->name}" : ''),
-                ['hotel_id' => $hotelId, 'is_super_admin' => $user->isSuperAdmin()],
-                null,
-                null,
-                false
-            );
+        $hotel = $hotelId ? Hotel::find($hotelId) : null;
+        $logDescription = "User logged in: {$user->name}";
+        
+        if ($user->isSuperAdmin()) {
+            $logDescription .= " (Super Admin)";
+            if ($hotel) {
+                $logDescription .= " - Hotel: {$hotel->name}";
+            } else {
+                $logDescription .= " - No hotel selected (Global access)";
+            }
+        } elseif ($hotel) {
+            $logDescription .= " - Hotel: {$hotel->name}";
         }
+        
+        logActivity(
+            'user_login',
+            null,
+            $logDescription,
+            [
+                'hotel_id' => $hotelId,
+                'is_super_admin' => $user->isSuperAdmin(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent()
+            ],
+            null,
+            null,
+            false
+        );
 
         return redirect()->intended('/dashboard');
     }
@@ -103,13 +119,31 @@ class LoginController extends Controller
         $hotelId = session('hotel_id');
         
         // Log user logout before session is destroyed
-        if ($user && $hotelId) {
-            $hotel = Hotel::find($hotelId);
+        if ($user) {
+            $hotel = $hotelId ? Hotel::find($hotelId) : null;
+            $logDescription = "User logged out: {$user->name}";
+            
+            if ($user->isSuperAdmin()) {
+                $logDescription .= " (Super Admin)";
+                if ($hotel) {
+                    $logDescription .= " - Hotel: {$hotel->name}";
+                } else {
+                    $logDescription .= " - No hotel selected";
+                }
+            } elseif ($hotel) {
+                $logDescription .= " - Hotel: {$hotel->name}";
+            }
+            
             logActivity(
                 'user_logout',
                 null,
-                "User logged out: {$user->name}" . ($hotel ? " - Hotel: {$hotel->name}" : ''),
-                ['hotel_id' => $hotelId, 'is_super_admin' => $user->isSuperAdmin()],
+                $logDescription,
+                [
+                    'hotel_id' => $hotelId,
+                    'is_super_admin' => $user->isSuperAdmin(),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent()
+                ],
                 null,
                 null,
                 false

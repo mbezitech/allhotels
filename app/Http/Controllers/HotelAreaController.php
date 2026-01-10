@@ -11,14 +11,38 @@ class HotelAreaController extends Controller
     /**
      * Display a listing of hotel areas
      */
-    public function index()
+    public function index(Request $request)
     {
         $hotelId = session('hotel_id');
-        $areas = HotelArea::where('hotel_id', $hotelId)
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // Super admins can see all hotel areas, others only their hotel
+        $query = HotelArea::query();
+        if (!$isSuperAdmin) {
+            if (!$hotelId) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Please select a hotel to view hotel areas.');
+            }
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+            $selectedHotelId = $request->hotel_id;
+        } else {
+            $selectedHotelId = $hotelId;
+        }
+        
+        $areas = $query->with('hotel')
+            ->orderBy('hotel_id')
             ->orderBy('name')
             ->get();
 
-        return view('hotel-areas.index', compact('areas'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
+
+        return view('hotel-areas.index', compact('areas', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
@@ -115,6 +139,11 @@ class HotelAreaController extends Controller
      */
     private function authorizeHotel(HotelArea $area)
     {
+        // Super admins can access any hotel area
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($area->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this area.');
         }

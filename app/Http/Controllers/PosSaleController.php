@@ -19,9 +19,20 @@ class PosSaleController extends Controller
     public function index(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        $query = PosSale::where('hotel_id', $hotelId)
-            ->with('room', 'items.extra', 'user');
+        // Super admins can see all POS sales, others only their hotel
+        $query = PosSale::query();
+        if (!$isSuperAdmin) {
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+        }
+        
+        $query->with(['room', 'items.extra', 'user', 'hotel']);
 
         // Filter by date
         if ($request->has('date') && $request->date) {
@@ -37,7 +48,10 @@ class PosSaleController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return view('pos-sales.index', compact('sales'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
+
+        return view('pos-sales.index', compact('sales', 'hotels', 'isSuperAdmin'));
     }
 
     /**
@@ -90,10 +104,10 @@ class PosSaleController extends Controller
 
         $hotelId = session('hotel_id');
 
-        // Verify room belongs to hotel if provided
+        // Verify room belongs to hotel if provided (unless super admin)
         if ($validated['room_id']) {
             $room = Room::findOrFail($validated['room_id']);
-            if ($room->hotel_id != $hotelId) {
+            if (!auth()->user()->isSuperAdmin() && $room->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this room.');
             }
         }
@@ -196,6 +210,11 @@ class PosSaleController extends Controller
      */
     private function authorizeHotel(PosSale $posSale)
     {
+        // Super admins can access any POS sale
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($posSale->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this POS sale.');
         }

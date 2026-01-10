@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ExtraCategory;
+use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -11,14 +12,39 @@ class ExtraCategoryController extends Controller
     /**
      * Display a listing of extra categories.
      */
-    public function index()
+    public function index(Request $request)
     {
         $hotelId = session('hotel_id');
-        $categories = ExtraCategory::where('hotel_id', $hotelId)
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // Super admins can see all extra categories, others only their hotel
+        $query = ExtraCategory::query();
+        if (!$isSuperAdmin) {
+            if (!$hotelId) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Please select a hotel to view extra categories.');
+            }
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+            $selectedHotelId = $request->hotel_id;
+        } else {
+            $selectedHotelId = $hotelId;
+        }
+        
+        $categories = $query->with('hotel')
+            ->withCount('extras')
+            ->orderBy('hotel_id')
             ->orderBy('name')
             ->get();
         
-        return view('extra-categories.index', compact('categories'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
+        
+        return view('extra-categories.index', compact('categories', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
@@ -118,6 +144,11 @@ class ExtraCategoryController extends Controller
      */
     private function authorizeHotel(ExtraCategory $category)
     {
+        // Super admins can access any extra category
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($category->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this category.');
         }

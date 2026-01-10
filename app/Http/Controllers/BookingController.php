@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Hotel;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,9 +17,20 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        $query = Booking::where('hotel_id', $hotelId)
-            ->with(['room', 'createdBy.roles']);
+        // Super admins can see all bookings, others only their hotel
+        $query = Booking::query();
+        if (!$isSuperAdmin) {
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        $query->with(['room', 'createdBy.roles', 'hotel']);
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+        }
 
         // Search functionality
         if ($request->has('search') && $request->search) {
@@ -78,12 +90,22 @@ class BookingController extends Controller
         $bookings = $query->paginate(20)->withQueryString();
 
         // Get rooms for filter dropdown
-        $rooms = Room::where('hotel_id', $hotelId)
-            ->with('roomType')
-            ->orderBy('room_number')
-            ->get();
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $rooms = Room::where('hotel_id', $request->hotel_id)
+                ->with('roomType')
+                ->orderBy('room_number')
+                ->get();
+        } else {
+            $rooms = $hotelId ? Room::where('hotel_id', $hotelId)
+                ->with('roomType')
+                ->orderBy('room_number')
+                ->get() : collect();
+        }
 
-        return view('bookings.index', compact('bookings', 'rooms'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
+
+        return view('bookings.index', compact('bookings', 'rooms', 'hotels', 'isSuperAdmin'));
     }
 
     /**
@@ -121,8 +143,8 @@ class BookingController extends Controller
         $hotelId = session('hotel_id');
         $room = Room::findOrFail($validated['room_id']);
 
-        // Ensure room belongs to current hotel
-        if ($room->hotel_id != $hotelId) {
+        // Ensure room belongs to current hotel (unless super admin)
+        if (!auth()->user()->isSuperAdmin() && $room->hotel_id != $hotelId) {
             abort(403, 'Unauthorized access to this room.');
         }
 
@@ -342,6 +364,11 @@ class BookingController extends Controller
      */
     private function authorizeHotel(Booking $booking)
     {
+        // Super admins can access any booking
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         $hotelId = session('hotel_id');
         if (!$hotelId) {
             abort(403, 'No hotel context set. Please select a hotel.');

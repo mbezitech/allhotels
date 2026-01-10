@@ -17,9 +17,23 @@ class HousekeepingRecordController extends Controller
     public function index(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        $query = HousekeepingRecord::where('hotel_id', $hotelId)
-            ->with('room', 'area', 'assignedTo', 'inspectedBy');
+        // Super admins can see all records, others only their hotel
+        $query = HousekeepingRecord::query();
+        if (!$isSuperAdmin) {
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+            $selectedHotelId = $request->hotel_id;
+        } else {
+            $selectedHotelId = $hotelId;
+        }
+        
+        $query->with(['room', 'area', 'assignedTo', 'inspectedBy', 'hotel']);
 
         // Filter by room
         if ($request->has('room_id') && $request->room_id) {
@@ -55,11 +69,25 @@ class HousekeepingRecordController extends Controller
         }
 
         $records = $query->orderBy('created_at', 'desc')->paginate(20);
-        $rooms = Room::where('hotel_id', $hotelId)->orderBy('room_number')->get();
-        $areas = HotelArea::where('hotel_id', $hotelId)->where('is_active', true)->orderBy('name')->get();
+        
+        // Get rooms and areas for filters (based on selected hotel for super admin)
+        if ($isSuperAdmin && $selectedHotelId) {
+            $rooms = Room::where('hotel_id', $selectedHotelId)->orderBy('room_number')->get();
+            $areas = HotelArea::where('hotel_id', $selectedHotelId)->where('is_active', true)->orderBy('name')->get();
+        } elseif ($hotelId) {
+            $rooms = Room::where('hotel_id', $hotelId)->orderBy('room_number')->get();
+            $areas = HotelArea::where('hotel_id', $hotelId)->where('is_active', true)->orderBy('name')->get();
+        } else {
+            $rooms = collect();
+            $areas = collect();
+        }
+        
         $users = User::all();
+        
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
 
-        return view('housekeeping-records.index', compact('records', 'rooms', 'areas', 'users'));
+        return view('housekeeping-records.index', compact('records', 'rooms', 'areas', 'users', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
@@ -102,18 +130,18 @@ class HousekeepingRecordController extends Controller
             return back()->withErrors(['room_id' => 'Please select either a room OR an area, not both.']);
         }
 
-        // Verify room belongs to hotel if provided
+        // Verify room belongs to hotel if provided (unless super admin)
         if ($validated['room_id']) {
             $room = Room::findOrFail($validated['room_id']);
-            if ($room->hotel_id != $hotelId) {
+            if (!auth()->user()->isSuperAdmin() && $room->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this room.');
             }
         }
 
-        // Verify area belongs to hotel if provided
+        // Verify area belongs to hotel if provided (unless super admin)
         if ($validated['area_id']) {
             $area = HotelArea::findOrFail($validated['area_id']);
-            if ($area->hotel_id != $hotelId) {
+            if (!auth()->user()->isSuperAdmin() && $area->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this area.');
             }
         }
@@ -453,6 +481,11 @@ class HousekeepingRecordController extends Controller
      */
     private function authorizeHotel(HousekeepingRecord $record)
     {
+        // Super admins can access any housekeeping record
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($record->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this record.');
         }

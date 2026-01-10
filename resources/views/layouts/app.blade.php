@@ -233,6 +233,11 @@
                 @if(auth()->user()->isSuperAdmin())
                     <li class="nav-section">Administration</li>
                     <li class="nav-item">
+                        <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                            Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="{{ route('hotels.index') }}" class="nav-link {{ request()->routeIs('hotels.*') ? 'active' : '' }}">
                             Hotels
                         </a>
@@ -269,6 +274,26 @@
         <div class="top-bar">
             <h2>@yield('page-title', 'Dashboard')</h2>
             <div class="user-menu">
+                @if(auth()->user()->isSuperAdmin())
+                    @php
+                        $allHotels = \App\Models\Hotel::orderBy('name')->get();
+                        $currentHotelId = session('hotel_id');
+                        $currentHotel = $currentHotelId ? \App\Models\Hotel::find($currentHotelId) : null;
+                    @endphp
+                    <div style="position: relative; display: inline-block; margin-right: 15px;">
+                        <select id="hotel-switcher" onchange="switchHotel(this.value)" style="padding: 8px 16px; border: 2px solid #667eea; border-radius: 6px; background: white; color: #333; font-size: 14px; cursor: pointer; min-width: 200px;">
+                            <option value="">-- Select Hotel --</option>
+                            @foreach($allHotels as $hotel)
+                                <option value="{{ $hotel->id }}" {{ $currentHotelId == $hotel->id ? 'selected' : '' }}>
+                                    {{ $hotel->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <a href="{{ route('hotels.index') }}" style="padding: 8px 16px; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 14px; margin-right: 15px;">
+                        Manage Hotels
+                    </a>
+                @endif
                 <span class="user-name">{{ auth()->user()->name }}</span>
                 <form method="POST" action="{{ route('logout') }}" style="display: inline;">
                     @csrf
@@ -292,6 +317,33 @@
             @yield('content')
         </div>
     </div>
+
+    @if(auth()->user()->isSuperAdmin())
+    <script>
+        function switchHotel(hotelId) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = hotelId ? '{{ url("/hotels") }}/' + hotelId + '/switch' : '{{ route("hotels.switch") }}';
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = '{{ csrf_token() }}';
+            form.appendChild(csrfInput);
+            
+            if (hotelId) {
+                const hotelInput = document.createElement('input');
+                hotelInput.type = 'hidden';
+                hotelInput.name = 'hotel_id';
+                hotelInput.value = hotelId;
+                form.appendChild(hotelInput);
+            }
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+    @endif
 
     @stack('scripts')
 </body>

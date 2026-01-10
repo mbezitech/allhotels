@@ -79,13 +79,32 @@
             <form method="POST" action="{{ route('stock-movements.store') }}">
                 @csrf
 
+                @if(isset($isSuperAdmin) && $isSuperAdmin && isset($hotels) && $hotels->count() > 0)
+                <div class="form-group">
+                    <label for="hotel_id">Hotel *</label>
+                    <select id="hotel_id" name="hotel_id" required onchange="window.location.href='{{ route('stock-movements.create') }}?hotel_id=' + this.value">
+                        <option value="">-- Select Hotel --</option>
+                        @foreach($hotels as $h)
+                            <option value="{{ $h->id }}" {{ (isset($selectedHotelId) && $selectedHotelId == $h->id) || request('hotel_id') == $h->id ? 'selected' : '' }}>
+                                {{ $h->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('hotel_id')
+                        <span class="error">{{ $message }}</span>
+                    @enderror
+                </div>
+                @else
+                    <input type="hidden" name="hotel_id" value="{{ isset($selectedHotelId) ? $selectedHotelId : '' }}">
+                @endif
+
                 <div class="form-group">
                     <label for="product_id">Product *</label>
                     <select id="product_id" name="product_id" required>
                         <option value="">-- Select Product --</option>
                         @foreach($products as $product)
                             <option value="{{ $product->id }}" {{ old('product_id') == $product->id ? 'selected' : '' }}>
-                                {{ $product->name }} ({{ $product->category }})
+                                {{ $product->name }}@if($product->category) ({{ $product->category->name ?? $product->category }})@endif
                             </option>
                         @endforeach
                     </select>

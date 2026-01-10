@@ -32,8 +32,34 @@
     @endif
 </div>
 
+@if(isset($isSuperAdmin) && $isSuperAdmin && isset($hotels) && $hotels->count() > 0)
+    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <form method="GET" action="{{ route('housekeeping-records.index') }}" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px;">Filter by Hotel:</label>
+                <select name="hotel_id" onchange="this.form.submit()" style="padding: 8px 16px; border: 2px solid #667eea; border-radius: 6px; background: white; cursor: pointer; min-width: 200px;">
+                    <option value="">All Hotels</option>
+                    @foreach($hotels as $h)
+                        <option value="{{ $h->id }}" {{ (isset($selectedHotelId) && $selectedHotelId == $h->id) || request('hotel_id') == $h->id ? 'selected' : '' }}>
+                            {{ $h->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @if(request('hotel_id'))
+                <a href="{{ route('housekeeping-records.index') }}" style="padding: 8px 16px; background: #95a5a6; color: white; border-radius: 6px; text-decoration: none; font-size: 14px;">
+                    Clear Filter
+                </a>
+            @endif
+        </form>
+    </div>
+@endif
+
 <div class="filters">
     <form method="GET" action="{{ route('housekeeping-records.index') }}" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+        @if(isset($isSuperAdmin) && $isSuperAdmin && request('hotel_id'))
+            <input type="hidden" name="hotel_id" value="{{ request('hotel_id') }}">
+        @endif
         <div class="filter-group">
             <label>Room</label>
             <select name="room_id" onchange="this.form.submit()">
@@ -79,7 +105,7 @@
             <label>Date To</label>
             <input type="date" name="date_to" value="{{ request('date_to') }}" onchange="this.form.submit()">
         </div>
-        @if(request()->hasAny(['room_id', 'area_id', 'cleaning_status', 'assigned_to', 'date_from', 'date_to']))
+        @if(request()->hasAny(['room_id', 'area_id', 'cleaning_status', 'assigned_to', 'date_from', 'date_to', 'hotel_id']))
             <div class="filter-group">
                 <a href="{{ route('housekeeping-records.index') }}" class="btn" style="background: #95a5a6; color: white;">Clear</a>
             </div>
@@ -95,6 +121,9 @@
     <table>
         <thead>
             <tr>
+                @if(isset($isSuperAdmin) && $isSuperAdmin)
+                <th>Hotel</th>
+                @endif
                 <th>Type</th>
                 <th>Location</th>
                 <th>Status</th>
@@ -109,6 +138,14 @@
         <tbody>
             @forelse($records as $record)
                 <tr>
+                    @if(isset($isSuperAdmin) && $isSuperAdmin)
+                    <td>
+                        <strong style="color: #667eea;">{{ $record->hotel->name ?? 'Unknown Hotel' }}</strong>
+                        @if($record->hotel && $record->hotel->address)
+                            <div style="font-size: 11px; color: #999; margin-top: 2px;">{{ \Illuminate\Support\Str::limit($record->hotel->address, 30) }}</div>
+                        @endif
+                    </td>
+                    @endif
                     <td>{{ $record->room_id ? 'Room' : 'Area' }}</td>
                     <td>
                         @if($record->room)
@@ -146,7 +183,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="9" style="text-align: center; color: #999; padding: 40px;">No records found</td></tr>
+                <tr><td colspan="{{ (isset($isSuperAdmin) && $isSuperAdmin) ? '10' : '9' }}" style="text-align: center; color: #999; padding: 40px;">No records found</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -62,9 +62,20 @@ class ActivityLogController extends Controller
         if ($request->has('user_id') && $request->user_id) {
             if ($request->user_id === 'system') {
                 $query->whereNull('user_id');
+            } elseif ($request->user_id === 'super_admin') {
+                // Filter for super admin logins/logouts
+                $superAdminIds = User::where('is_super_admin', true)->pluck('id');
+                $query->whereIn('user_id', $superAdminIds)
+                      ->whereIn('action', ['user_login', 'user_logout']);
             } else {
                 $query->where('user_id', $request->user_id);
             }
+        }
+        
+        // Filter for super admin actions only
+        if ($request->has('super_admin_only') && $request->super_admin_only) {
+            $superAdminIds = User::where('is_super_admin', true)->pluck('id');
+            $query->whereIn('user_id', $superAdminIds);
         }
 
         // Filter by date range

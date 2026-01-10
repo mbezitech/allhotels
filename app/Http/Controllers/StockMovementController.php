@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Extra;
 use App\Models\StockMovement;
+use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,9 +16,27 @@ class StockMovementController extends Controller
     public function index(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        $query = StockMovement::where('hotel_id', $hotelId)
-            ->with('product', 'creator');
+        // Super admins can see all stock movements, others only their hotel
+        $query = StockMovement::query();
+        if (!$isSuperAdmin) {
+            if (!$hotelId) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Please select a hotel to view stock movements.');
+            }
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+            $selectedHotelId = $request->hotel_id;
+        } else {
+            $selectedHotelId = $hotelId;
+        }
+
+        $query->with('product', 'creator', 'hotel');
 
         // Filter by product
         if ($request->has('product_id') && $request->product_id) {
@@ -31,27 +50,51 @@ class StockMovementController extends Controller
 
         $movements = $query->orderBy('created_at', 'desc')->paginate(20);
 
-        // Get all products for filter
-        $products = Extra::where('hotel_id', $hotelId)
-            ->where('stock_tracked', true)
-            ->orderBy('name')
-            ->get();
+        // Get all products for filter (scoped to selected hotel or all for super admin)
+        $productsQuery = Extra::where('stock_tracked', true);
+        if ($selectedHotelId && !$isSuperAdmin) {
+            $productsQuery->where('hotel_id', $selectedHotelId);
+        } elseif ($isSuperAdmin && $selectedHotelId) {
+            $productsQuery->where('hotel_id', $selectedHotelId);
+        }
+        // If super admin and no hotel selected, show all products
+        $products = $productsQuery->orderBy('name')->get();
 
-        return view('stock-movements.index', compact('movements', 'products'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
+
+        return view('stock-movements.index', compact('movements', 'products', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
      * Show the form for creating a new stock movement
      */
-    public function create()
+    public function create(Request $request)
     {
         $hotelId = session('hotel_id');
-        $products = Extra::where('hotel_id', $hotelId)
-            ->where('stock_tracked', true)
-            ->orderBy('name')
-            ->get();
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // For super admins, allow selecting hotel or use session hotel
+        $selectedHotelId = $request->get('hotel_id', $hotelId);
+        
+        $productsQuery = Extra::where('stock_tracked', true);
+        if ($selectedHotelId) {
+            $productsQuery->where('hotel_id', $selectedHotelId);
+        } elseif (!$isSuperAdmin) {
+            // Regular users must have a hotel
+            if (!$hotelId) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Please select a hotel to create a stock movement.');
+            }
+            $productsQuery->where('hotel_id', $hotelId);
+        }
+        // If super admin and no hotel selected, show all products
+        $products = $productsQuery->orderBy('name')->get();
+        
+        // Get all hotels for super admin
+        $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
 
-        return view('stock-movements.create', compact('products'));
+        return view('stock-movements.create', compact('products', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 
     /**
@@ -67,10 +110,17 @@ class StockMovementController extends Controller
         ]);
 
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         $product = Extra::findOrFail($validated['product_id']);
 
-        // Ensure product belongs to hotel and stock tracking is enabled
-        if ($product->hotel_id != $hotelId) {
+        // For super admins, use hotel_id from request if provided, otherwise use product's hotel
+        $taskHotelId = $request->get('hotel_id', $product->hotel_id);
+        if (!$isSuperAdmin) {
+            $taskHotelId = $hotelId;
+        }
+
+        // Ensure product belongs to hotel and stock tracking is enabled (unless super admin)
+        if (!$isSuperAdmin && $product->hotel_id != $hotelId) {
             abort(403, 'Unauthorized access to this product.');
         }
 
@@ -79,7 +129,7 @@ class StockMovementController extends Controller
         }
 
         StockMovement::create([
-            'hotel_id' => $hotelId,
+            'hotel_id' => $taskHotelId,
             'product_id' => $validated['product_id'],
             'type' => $validated['type'],
             'quantity' => $validated['quantity'],
@@ -96,20 +146,44 @@ class StockMovementController extends Controller
     /**
      * Display stock balance for all products
      */
-    public function balance()
+    public function balance(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        $products = Extra::where('hotel_id', $hotelId)
-            ->where('stock_tracked', true)
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $selectedHotelId = $request->hotel_id;
+        } else {
+            $selectedHotelId = $hotelId;
+        }
+        
+        $productsQuery = Extra::where('stock_tracked', true);
+        if (!$isSuperAdmin) {
+            if (!$hotelId) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'Please select a hotel to view stock balance.');
+            }
+            $productsQuery->where('hotel_id', $hotelId);
+        } elseif ($selectedHotelId) {
+            $productsQuery->where('hotel_id', $selectedHotelId);
+        }
+        // If super admin and no hotel selected, show all products
+        
+        $products = $productsQuery->with('category', 'hotel')
             ->orderBy('name')
             ->get()
-            ->map(function ($product) use ($hotelId) {
-                $product->current_stock = $product->getStockBalance($hotelId);
-                $product->is_low = $product->isLowStock($hotelId);
+            ->map(function ($product) use ($selectedHotelId, $isSuperAdmin) {
+                // Always use the product's hotel_id for stock balance calculation
+                $productHotelId = $product->hotel_id;
+                $product->current_stock = $product->getStockBalance($productHotelId);
+                $product->is_low = $product->isLowStock($productHotelId);
                 return $product;
             });
 
-        return view('stock-movements.balance', compact('products'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
+
+        return view('stock-movements.balance', compact('products', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
     }
 }

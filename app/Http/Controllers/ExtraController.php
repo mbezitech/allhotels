@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Extra;
 use App\Models\ExtraCategory;
+use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,8 +16,18 @@ class ExtraController extends Controller
     public function index(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        $query = Extra::where('hotel_id', $hotelId);
+        // Super admins can see all extras, others only their hotel
+        $query = Extra::query();
+        if (!$isSuperAdmin) {
+            $query->where('hotel_id', $hotelId);
+        }
+        
+        // Hotel filter for super admins
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $query->where('hotel_id', $request->hotel_id);
+        }
 
         // Filter by category
         if ($request->has('category_id') && $request->category_id) {
@@ -28,18 +39,24 @@ class ExtraController extends Controller
             $query->where('is_active', $request->active);
         }
 
-        $extras = $query->with('category')->orderBy('category_id')->orderBy('name')->get();
+        $extras = $query->with(['category', 'hotel'])->orderBy('hotel_id')->orderBy('category_id')->orderBy('name')->get();
         
         // Pre-calculate stock balances to avoid N+1 queries
-        $hotelId = session('hotel_id');
         foreach ($extras as $extra) {
             if ($extra->stock_tracked) {
-                $extra->current_stock = $extra->getStockBalance($hotelId);
-                $extra->is_low_stock = $extra->isLowStock($hotelId);
+                $extraHotelId = $extra->hotel_id;
+                $extra->current_stock = $extra->getStockBalance($extraHotelId);
+                $extra->is_low_stock = $extra->isLowStock($extraHotelId);
             }
         }
 
-        return view('extras.index', compact('extras'));
+        // Get all hotels for super admin filter
+        $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
+        $categories = $isSuperAdmin && $request->has('hotel_id') && $request->hotel_id
+            ? \App\Models\ExtraCategory::where('hotel_id', $request->hotel_id)->orderBy('name')->get()
+            : ($hotelId ? \App\Models\ExtraCategory::where('hotel_id', $hotelId)->orderBy('name')->get() : collect());
+
+        return view('extras.index', compact('extras', 'hotels', 'categories', 'isSuperAdmin'));
     }
 
     /**
@@ -73,7 +90,7 @@ class ExtraController extends Controller
             'description' => 'nullable|string',
             'category_id' => ['required', 'exists:extra_categories,id', function ($attribute, $value, $fail) use ($hotelId) {
                 $category = ExtraCategory::find($value);
-                if ($category && $category->hotel_id != $hotelId) {
+                if ($category && !auth()->user()->isSuperAdmin() && $category->hotel_id != $hotelId) {
                     $fail('The selected category does not belong to this hotel.');
                 }
             }],
@@ -156,7 +173,7 @@ class ExtraController extends Controller
             'description' => 'nullable|string',
             'category_id' => ['required', 'exists:extra_categories,id', function ($attribute, $value, $fail) use ($hotelId) {
                 $category = ExtraCategory::find($value);
-                if ($category && $category->hotel_id != $hotelId) {
+                if ($category && !auth()->user()->isSuperAdmin() && $category->hotel_id != $hotelId) {
                     $fail('The selected category does not belong to this hotel.');
                 }
             }],
@@ -236,6 +253,11 @@ class ExtraController extends Controller
      */
     private function authorizeHotel(Extra $extra)
     {
+        // Super admins can access any extra
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+        
         if ($extra->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this extra.');
         }

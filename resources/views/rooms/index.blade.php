@@ -91,17 +91,45 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">All Rooms</h2>
     <div style="display: flex; gap: 10px;">
-        <a href="{{ route('public.search', $hotel->slug) }}" target="_blank" class="btn" style="background: #28a745;">View Public Search</a>
+        @if(isset($hotel) && $hotel)
+            <a href="{{ route('public.search', $hotel->slug) }}" target="_blank" class="btn" style="background: #28a745;">View Public Search</a>
+        @endif
         @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
             <a href="{{ route('rooms.create') }}" class="btn btn-primary">Add Room</a>
         @endif
     </div>
 </div>
 
+@if(isset($isSuperAdmin) && $isSuperAdmin && isset($hotels) && $hotels->count() > 0)
+    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <form method="GET" action="{{ route('rooms.index') }}" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px;">Filter by Hotel:</label>
+                <select name="hotel_id" onchange="this.form.submit()" style="padding: 8px 16px; border: 2px solid #667eea; border-radius: 6px; background: white; cursor: pointer; min-width: 200px;">
+                    <option value="">All Hotels</option>
+                    @foreach($hotels as $h)
+                        <option value="{{ $h->id }}" {{ (isset($selectedHotelId) && $selectedHotelId == $h->id) || request('hotel_id') == $h->id ? 'selected' : '' }}>
+                            {{ $h->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @if(request('hotel_id'))
+                <a href="{{ route('rooms.index') }}" style="padding: 8px 16px; background: #95a5a6; color: white; border-radius: 6px; text-decoration: none; font-size: 14px;">
+                    Clear Filter
+                </a>
+            @endif
+        </form>
+    </div>
+@endif
+
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
     <table>
         <thead>
             <tr>
+                @if(isset($isSuperAdmin) && $isSuperAdmin)
+                <th>Hotel</th>
+                @endif
                 <th>Room Number</th>
                 <th>Type</th>
                 <th>Status</th>
@@ -116,9 +144,18 @@
         <tbody>
             @forelse($rooms as $room)
                 @php
-                    $bookingUrl = url('/book/' . $hotel->slug . '/' . $room->id);
+                    $roomHotel = $room->hotel ?? $hotel ?? null;
+                    $bookingUrl = $roomHotel ? url('/book/' . $roomHotel->slug . '/' . $room->id) : '#';
                 @endphp
                 <tr>
+                    @if(isset($isSuperAdmin) && $isSuperAdmin)
+                    <td>
+                        <strong style="color: #667eea;">{{ $room->hotel->name ?? 'Unknown Hotel' }}</strong>
+                        @if($room->hotel && $room->hotel->address)
+                            <div style="font-size: 11px; color: #999; margin-top: 2px;">{{ \Illuminate\Support\Str::limit($room->hotel->address, 30) }}</div>
+                        @endif
+                    </td>
+                    @endif
                     <td><strong>{{ $room->room_number }}</strong></td>
                     <td>{{ $room->roomType->name ?? 'N/A' }}</td>
                     <td>
@@ -131,20 +168,24 @@
                     <td>${{ number_format($room->price_per_night, 2) }}</td>
                     <td>{{ $room->bookings_count }}</td>
                     <td>
-                        <div class="booking-link">
-                            <input type="text" 
-                                   value="{{ $bookingUrl }}" 
-                                   readonly 
-                                   class="booking-link-input" 
-                                   id="booking-link-{{ $room->id }}"
-                                   onclick="this.select();">
-                            <button type="button" 
-                                    class="btn btn-copy" 
-                                    onclick="copyBookingLink({{ $room->id }}, '{{ $bookingUrl }}')"
-                                    id="copy-btn-{{ $room->id }}">
-                                Copy
-                            </button>
-                        </div>
+                        @if($roomHotel)
+                            <div class="booking-link">
+                                <input type="text" 
+                                       value="{{ $bookingUrl }}" 
+                                       readonly 
+                                       class="booking-link-input" 
+                                       id="booking-link-{{ $room->id }}"
+                                       onclick="this.select();">
+                                <button type="button" 
+                                        class="btn btn-copy" 
+                                        onclick="copyBookingLink({{ $room->id }}, '{{ $bookingUrl }}')"
+                                        id="copy-btn-{{ $room->id }}">
+                                    Copy
+                                </button>
+                            </div>
+                        @else
+                            <span style="color: #999; font-style: italic;">N/A</span>
+                        @endif
                     </td>
                     <td>
                         @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
@@ -159,7 +200,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" style="text-align: center; color: #999; padding: 40px;">No rooms found</td>
+                    <td colspan="{{ (isset($isSuperAdmin) && $isSuperAdmin) ? '10' : '9' }}" style="text-align: center; color: #999; padding: 40px;">No rooms found</td>
                 </tr>
             @endforelse
         </tbody>
