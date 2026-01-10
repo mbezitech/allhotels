@@ -14,24 +14,41 @@ class RolesSeeder extends Seeder
      */
     public function run(): void
     {
-        // Manager Role - Full access except user/role management
+        // Manager Role - Full access including user management
         $manager = Role::updateOrCreate(
             ['slug' => 'manager'],
             [
                 'name' => 'Manager',
-                'description' => 'Full access to hotel operations except user management'
+                'description' => 'Full access to hotel operations including user management'
             ]
         );
 
         $managerPermissions = [
-            'rooms.manage', 'rooms.view',
-            'bookings.create', 'bookings.edit', 'bookings.delete', 'bookings.view',
-            'pos.sell', 'pos.view',
-            'stock.manage', 'stock.view',
-            'payments.create', 'payments.view',
+            // Rooms
+            'rooms.view', 'rooms.manage', 'rooms.edit',
+            'room_types.view', 'room_types.manage', 'room_types.edit',
+            // Bookings
+            'bookings.view', 'bookings.create', 'bookings.edit', 'bookings.delete', 'bookings.manage',
+            // POS
+            'pos.view', 'pos.sell', 'pos.edit', 'pos.delete', 'pos.manage',
+            // Stock/Products
+            'stock.view', 'stock.manage', 'stock.edit',
+            'extras.view', 'extras.manage', 'extras.edit',
+            'extra_categories.view', 'extra_categories.manage', 'extra_categories.edit',
+            // Payments
+            'payments.view', 'payments.create', 'payments.edit', 'payments.delete', 'payments.manage',
+            // Reports
             'reports.view',
-            'housekeeping.manage', 'housekeeping.view',
+            // Housekeeping
+            'housekeeping.view', 'housekeeping.manage', 'housekeeping.edit',
+            'housekeeping_records.view', 'housekeeping_records.manage', 'housekeeping_records.edit',
+            'housekeeping_reports.view',
+            'hotel_areas.view', 'hotel_areas.manage', 'hotel_areas.edit',
+            'tasks.view', 'tasks.manage', 'tasks.edit',
+            // Activity Logs
             'activity_logs.view',
+            // Users
+            'users.view', 'users.manage', 'users.edit', 'users.activate',
         ];
 
         $manager->permissions()->sync(
@@ -48,11 +65,19 @@ class RolesSeeder extends Seeder
         );
 
         $receptionistPermissions = [
+            // Rooms
             'rooms.view',
-            'bookings.create', 'bookings.edit', 'bookings.view',
-            'pos.sell', 'pos.view',
-            'payments.create', 'payments.view',
+            'room_types.view',
+            // Bookings
+            'bookings.view', 'bookings.create', 'bookings.edit',
+            // POS
+            'pos.view', 'pos.sell',
+            // Payments
+            'payments.view', 'payments.create',
+            // Housekeeping
             'housekeeping.view',
+            'housekeeping_records.view',
+            'tasks.view',
         ];
 
         $receptionist->permissions()->sync(
@@ -69,8 +94,11 @@ class RolesSeeder extends Seeder
         );
 
         $staffPermissions = [
-            'pos.sell', 'pos.view',
+            // POS
+            'pos.view', 'pos.sell',
+            // Stock
             'stock.view',
+            'extras.view',
         ];
 
         $staff->permissions()->sync(

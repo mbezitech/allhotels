@@ -45,6 +45,14 @@ class LoginController extends Controller
 
         $user = Auth::user();
 
+        // Check if user is active
+        if (!$user->is_active) {
+            Auth::logout();
+            throw ValidationException::withMessages([
+                'email' => 'Your account has been deactivated. Please contact an administrator.',
+            ]);
+        }
+
         // Super admin can login without hotel selection
         if ($user->isSuperAdmin()) {
             // If hotel selected, use it; otherwise set to null (super admin can access all)

@@ -230,18 +230,22 @@
                     </li>
                 @endif
 
-                @if(auth()->user()->isSuperAdmin())
+                @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('users.manage'))
                     <li class="nav-section">Administration</li>
+                    @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('users.manage'))
                     <li class="nav-item">
                         <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
                             Users
                         </a>
                     </li>
+                    @endif
+                    @if(auth()->user()->isSuperAdmin())
                     <li class="nav-item">
                         <a href="{{ route('hotels.index') }}" class="nav-link {{ request()->routeIs('hotels.*') ? 'active' : '' }}">
                             Hotels
                         </a>
                     </li>
+                    @endif
                 @endif
 
                 @if(auth()->user()->hasPermission('roles.manage') || auth()->user()->isSuperAdmin())
@@ -294,6 +298,9 @@
                         Manage Hotels
                     </a>
                 @endif
+                <a href="{{ route('profile.show') }}" style="color: #667eea; text-decoration: none; margin-right: 15px; font-weight: 500;">
+                    My Account
+                </a>
                 <span class="user-name">{{ auth()->user()->name }}</span>
                 <form method="POST" action="{{ route('logout') }}" style="display: inline;">
                     @csrf

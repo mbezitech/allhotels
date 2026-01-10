@@ -87,7 +87,14 @@
 @endif
 
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
-    <h2 style="color: #333; font-size: 24px; margin-bottom: 20px;">Assign New Role</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #333; font-size: 24px; margin: 0;">Assign New Role</h2>
+        @if(auth()->user()->isSuperAdmin() || (auth()->user()->hasPermission('users.manage', $hotel->id ?? null)))
+            <a href="{{ route('users.create', ['return_to' => 'user-roles']) }}" class="btn btn-primary" style="background: #28a745; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px;">
+                + Create New User
+            </a>
+        @endif
+    </div>
     
     <form method="POST" action="{{ route('user-roles.store') }}">
         @csrf
@@ -97,15 +104,25 @@
 
         <div class="form-group">
             <label for="user_id">User *</label>
-            <select id="user_id" name="user_id" required>
-                <option value="">-- Select User --</option>
-                @foreach($users as $user)
-                    <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
-                @endforeach
-            </select>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <select id="user_id" name="user_id" required style="flex: 1;">
+                    <option value="">-- Select User --</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+                    @endforeach
+                </select>
+                @if(auth()->user()->isSuperAdmin() || (auth()->user()->hasPermission('users.manage', $hotel->id ?? null)))
+                    <a href="{{ route('users.create', ['return_to' => 'user-roles']) }}" class="btn" style="background: #28a745; color: white; text-decoration: none; padding: 12px 16px; border-radius: 6px; white-space: nowrap;">
+                        + New User
+                    </a>
+                @endif
+            </div>
             @error('user_id')
                 <span style="color: #e74c3c; font-size: 12px; margin-top: 5px; display: block;">{{ $message }}</span>
             @enderror
+            @if(auth()->user()->isSuperAdmin() || (auth()->user()->hasPermission('users.manage', $hotel->id ?? null)))
+                <small style="color: #666; display: block; margin-top: 5px;">Can't find a user? <a href="{{ route('users.create', ['return_to' => 'user-roles']) }}" style="color: #667eea; text-decoration: underline;">Create a new user</a></small>
+            @endif
         </div>
 
         <div class="form-group">

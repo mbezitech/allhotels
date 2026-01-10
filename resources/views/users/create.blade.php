@@ -79,6 +79,9 @@
 
     <form method="POST" action="{{ route('users.store') }}">
         @csrf
+        @if(request('return_to') === 'user-roles')
+            <input type="hidden" name="return_to" value="user-roles">
+        @endif
 
         <div class="form-group">
             <label for="name">Name *</label>
@@ -110,6 +113,7 @@
             <input type="password" id="password_confirmation" name="password_confirmation" required minlength="8">
         </div>
 
+        @if(auth()->user()->isSuperAdmin())
         <div class="form-group">
             <div class="checkbox-group">
                 <input type="checkbox" id="is_super_admin" name="is_super_admin" {{ old('is_super_admin') ? 'checked' : '' }}>
@@ -117,6 +121,7 @@
             </div>
             <small style="color: #666; display: block; margin-top: 5px;">Super admins have access to all hotels and can manage the system globally</small>
         </div>
+        @endif
 
         <div style="margin-top: 30px;">
             <button type="submit" class="btn btn-primary">Create User</button>

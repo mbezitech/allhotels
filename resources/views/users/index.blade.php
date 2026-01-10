@@ -54,6 +54,22 @@
         background: #2196f3;
         color: white;
     }
+    .badge-active {
+        background: #d4edda;
+        color: #155724;
+    }
+    .badge-inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .btn-activate {
+        background: #28a745;
+        color: white;
+    }
+    .btn-deactivate {
+        background: #ffc107;
+        color: #333;
+    }
 </style>
 @endpush
 
@@ -69,6 +85,7 @@
             <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Status</th>
                 <th>Type</th>
                 <th>Owned Hotels</th>
                 <th>Created</th>
@@ -80,6 +97,13 @@
                 <tr>
                     <td><strong>{{ $user->name }}</strong></td>
                     <td>{{ $user->email }}</td>
+                    <td>
+                        @if($user->is_active ?? true)
+                            <span class="badge badge-active">Active</span>
+                        @else
+                            <span class="badge badge-inactive">Inactive</span>
+                        @endif
+                    </td>
                     <td>
                         @if($user->is_super_admin)
                             <span class="badge badge-super-admin">Super Admin</span>
@@ -102,19 +126,36 @@
                     </td>
                     <td>{{ $user->created_at->format('M d, Y') }}</td>
                     <td>
-                        <a href="{{ route('users.edit', $user) }}" class="btn btn-edit">Edit</a>
-                        @if($user->id !== auth()->id())
-                            <form action="{{ route('users.destroy', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this user?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">Delete</button>
-                            </form>
-                        @endif
+                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                            <a href="{{ route('users.edit', $user) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
+                            @if($user->id !== auth()->id() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.activate')))
+                                @if($user->is_active ?? true)
+                                    <form action="{{ route('users.deactivate', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to deactivate this user? They will not be able to login.')">
+                                        @csrf
+                                        @method('PUT')
+                                        <button type="submit" class="btn btn-deactivate" style="padding: 6px 12px; font-size: 12px;">Deactivate</button>
+                                    </form>
+                                @else
+                                    <form action="{{ route('users.activate', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to activate this user?')">
+                                        @csrf
+                                        @method('PUT')
+                                        <button type="submit" class="btn btn-activate" style="padding: 6px 12px; font-size: 12px;">Activate</button>
+                                    </form>
+                                @endif
+                            @endif
+                            @if($user->id !== auth()->id() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.manage')))
+                                <form action="{{ route('users.destroy', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this user?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+                                </form>
+                            @endif
+                        </div>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" style="text-align: center; color: #999; padding: 40px;">No users found</td>
+                    <td colspan="7" style="text-align: center; color: #999; padding: 40px;">No users found</td>
                 </tr>
             @endforelse
         </tbody>
