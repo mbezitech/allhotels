@@ -42,17 +42,27 @@ class UserRoleController extends Controller
         
         $hotel = Hotel::findOrFail($hotelId);
         
-        // Get all users (they can be assigned roles)
-        $users = User::all();
-        
-        // Get users who already have roles in this hotel
-        $userIds = DB::table('user_roles')
+        // Get users who have roles assigned in this hotel
+        $userIdsWithRoles = DB::table('user_roles')
             ->where('hotel_id', $hotelId)
             ->distinct()
             ->pluck('user_id')
             ->toArray();
         
-        $usersWithRoles = User::whereIn('id', $userIds)
+        // For the dropdown: Show ALL users (except super admins) so roles can be assigned to anyone
+        // This allows assigning roles to users who don't have roles yet
+        $users = User::where('is_super_admin', false)
+            ->orderBy('name')
+            ->get();
+        
+        // Get users who already have roles in this hotel (for display table)
+        // Include hotel owner even if they don't have a role yet
+        $hotelOwnerId = $hotel->owner_id;
+        $displayUserIds = array_unique(array_merge($userIdsWithRoles, $hotelOwnerId ? [$hotelOwnerId] : []));
+        
+        $usersWithRoles = User::whereIn('id', $displayUserIds)
+            ->where('is_super_admin', false)
+            ->orderBy('name')
             ->get()
             ->map(function ($user) use ($hotelId) {
                 $roleIds = DB::table('user_roles')

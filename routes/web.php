@@ -19,6 +19,10 @@ use App\Http\Controllers\LinkController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
+use App\Http\Controllers\EmailSettingsController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\ExpenseReportController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -115,6 +119,12 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     });
     
     Route::middleware('permission:rooms.manage')->group(function () {
+        Route::get('/rooms/create', [RoomController::class, 'create'])->name('rooms.create');
+        Route::post('/rooms', [RoomController::class, 'store'])->name('rooms.store');
+    });
+    
+    // Rooms delete (requires rooms.delete permission)
+    Route::middleware('permission:rooms.delete')->group(function () {
         Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('rooms.destroy');
     });
     
@@ -157,6 +167,12 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Bookings view/show (requires bookings.view permission)
     Route::middleware('permission:bookings.view')->group(function () {
         Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
+    });
+    
+    // Bookings check-in/check-out actions (requires bookings.edit permission)
+    Route::middleware('permission:bookings.edit')->group(function () {
+        Route::post('/bookings/{booking}/check-in', [BookingController::class, 'checkIn'])->name('bookings.check-in');
+        Route::post('/bookings/{booking}/check-out', [BookingController::class, 'checkOut'])->name('bookings.check-out');
     });
     
     Route::middleware('permission:bookings.edit')->group(function () {
@@ -242,9 +258,14 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     });
     
     // Tasks create must come before tasks/{task} to avoid route conflict
-    Route::middleware('permission:tasks.manage')->group(function () {
+    // Tasks create (requires tasks.create permission)
+    Route::middleware('permission:tasks.create')->group(function () {
         Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    });
+    
+    // Tasks delete (requires tasks.manage permission)
+    Route::middleware('permission:tasks.manage')->group(function () {
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
     });
     
@@ -361,5 +382,63 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     Route::middleware('permission:activity_logs.view')->group(function () {
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('activity-logs.show');
+    });
+    
+    // Email Settings (requires email_settings.view permission)
+    Route::middleware('permission:email_settings.view')->group(function () {
+        Route::get('/email-settings', [EmailSettingsController::class, 'index'])->name('email-settings.index');
+    });
+    
+    // Email Settings management (requires email_settings.manage permission)
+    Route::middleware('permission:email_settings.manage')->group(function () {
+        Route::post('/email-settings', [EmailSettingsController::class, 'store'])->name('email-settings.store');
+        Route::post('/email-settings/test-email', [EmailSettingsController::class, 'sendTestEmail'])->name('email-settings.test-email');
+    });
+    
+    // Expenses - Create route must come before parameterized routes
+    Route::middleware('permission:expenses.create')->group(function () {
+        Route::get('/expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
+        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    });
+    
+    // Expenses (requires expenses.view permission)
+    Route::middleware('permission:expenses.view')->group(function () {
+        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::get('/expenses/{expense}', [ExpenseController::class, 'show'])->name('expenses.show');
+    });
+    
+    // Expenses edit (requires expenses.edit permission)
+    Route::middleware('permission:expenses.edit')->group(function () {
+        Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])->name('expenses.edit');
+        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+    });
+    
+    // Expenses delete (requires expenses.delete permission)
+    Route::middleware('permission:expenses.delete')->group(function () {
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+    });
+    
+    // Expense Categories (requires expense_categories.view permission)
+    Route::middleware('permission:expense_categories.view')->group(function () {
+        Route::get('/expense-categories', [ExpenseCategoryController::class, 'index'])->name('expense-categories.index');
+    });
+    
+    // Expense Categories management (requires expense_categories.manage permission)
+    Route::middleware('permission:expense_categories.manage')->group(function () {
+        Route::get('/expense-categories/create', [ExpenseCategoryController::class, 'create'])->name('expense-categories.create');
+        Route::post('/expense-categories', [ExpenseCategoryController::class, 'store'])->name('expense-categories.store');
+        Route::delete('/expense-categories/{expenseCategory}', [ExpenseCategoryController::class, 'destroy'])->name('expense-categories.destroy');
+    });
+    
+    // Expense Categories edit (requires expense_categories.edit permission)
+    Route::middleware('permission:expense_categories.edit')->group(function () {
+        Route::get('/expense-categories/{expenseCategory}/edit', [ExpenseCategoryController::class, 'edit'])->name('expense-categories.edit');
+        Route::put('/expense-categories/{expenseCategory}', [ExpenseCategoryController::class, 'update'])->name('expense-categories.update');
+    });
+    
+    // Expense Reports (requires expense_reports.view permission)
+    Route::middleware('permission:expense_reports.view')->group(function () {
+        Route::get('/expense-reports', [ExpenseReportController::class, 'index'])->name('expense-reports.index');
+        Route::get('/expense-reports/export', [ExpenseReportController::class, 'export'])->name('expense-reports.export');
     });
 });

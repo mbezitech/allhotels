@@ -214,6 +214,14 @@ class RoomController extends Controller
     public function destroy(Room $room)
     {
         $this->authorizeHotel($room);
+        
+        // Check if user has permission to delete rooms
+        $user = auth()->user();
+        $hotelId = session('hotel_id') ?? $room->hotel_id;
+        
+        if (!$user->isSuperAdmin() && !$user->hasPermission('rooms.delete', $hotelId)) {
+            abort(403, 'You do not have permission to delete rooms.');
+        }
 
         // Check if room has active bookings
         $hasBookings = $room->bookings()

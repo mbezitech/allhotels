@@ -27,7 +27,7 @@ class RolesSeeder extends Seeder
             // Dashboard
             'dashboard.view',
             // Rooms
-            'rooms.view', 'rooms.manage', 'rooms.edit',
+            'rooms.view', 'rooms.manage', 'rooms.edit', 'rooms.delete',
             'room_types.view', 'room_types.manage', 'room_types.edit',
             // Bookings
             'bookings.view', 'bookings.create', 'bookings.edit', 'bookings.delete', 'bookings.manage',
@@ -46,9 +46,15 @@ class RolesSeeder extends Seeder
             'housekeeping_records.view', 'housekeeping_records.manage', 'housekeeping_records.edit', 'housekeeping_records.inspect', 'housekeeping_records.resolve',
             'housekeeping_reports.view',
             'hotel_areas.view', 'hotel_areas.manage', 'hotel_areas.edit',
-            'tasks.view', 'tasks.manage', 'tasks.edit',
+            'tasks.view', 'tasks.create', 'tasks.manage', 'tasks.edit',
             // Activity Logs
             'activity_logs.view',
+            // Email Settings
+            'email_settings.view', 'email_settings.manage',
+            // Expenses
+            'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.delete', 'expenses.manage',
+            'expense_categories.view', 'expense_categories.manage', 'expense_categories.edit',
+            'expense_reports.view',
             // Users
             'users.view', 'users.manage', 'users.edit', 'users.activate',
         ];
@@ -81,7 +87,7 @@ class RolesSeeder extends Seeder
             // Housekeeping
             'housekeeping.view',
             'housekeeping_records.view',
-            'tasks.view',
+            'tasks.view', 'tasks.create',
         ];
 
         $receptionist->permissions()->sync(

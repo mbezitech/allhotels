@@ -378,6 +378,92 @@ class BookingController extends Controller
     }
 
     /**
+     * Check in a confirmed booking
+     */
+    public function checkIn(Booking $booking)
+    {
+        $this->authorizeHotel($booking);
+
+        if ($booking->status !== 'confirmed') {
+            return redirect()->route('bookings.index')
+                ->with('error', 'Only confirmed bookings can be checked in.');
+        }
+
+        $today = \Carbon\Carbon::today();
+        $checkInDate = \Carbon\Carbon::parse($booking->check_in);
+        $checkOutDate = \Carbon\Carbon::parse($booking->check_out);
+
+        // Cannot check in before the check-in date
+        if ($today->lt($checkInDate)) {
+            return redirect()->route('bookings.index')
+                ->with('error', "Cannot check in before the check-in date ({$checkInDate->format('M d, Y')}).");
+        }
+
+        // Cannot check in after the check-out date
+        if ($today->gt($checkOutDate)) {
+            return redirect()->route('bookings.index')
+                ->with('error', "Cannot check in after the check-out date ({$checkOutDate->format('M d, Y')}).");
+        }
+
+        // Cannot check in if payment is not complete
+        if (!$booking->isFullyPaid()) {
+            $outstandingBalance = $booking->outstanding_balance;
+            return redirect()->route('bookings.index')
+                ->with('error', "Cannot check in. Payment incomplete. Outstanding balance: $" . number_format($outstandingBalance, 2) . ". Please complete payment first.");
+        }
+
+        $oldStatus = $booking->status;
+        $booking->status = 'checked_in';
+        $booking->save();
+
+        logActivity('checked_in', $booking, "Guest checked in - Booking #{$booking->id} - {$booking->guest_name}", null, 
+            ['status' => $oldStatus], 
+            ['status' => 'checked_in']
+        );
+
+        return redirect()->route('bookings.index')
+            ->with('success', 'Guest checked in successfully.');
+    }
+
+    /**
+     * Check out a checked-in booking
+     */
+    public function checkOut(Booking $booking)
+    {
+        $this->authorizeHotel($booking);
+
+        if ($booking->status !== 'checked_in') {
+            return redirect()->route('bookings.index')
+                ->with('error', 'Only checked-in bookings can be checked out.');
+        }
+
+        $oldStatus = $booking->status;
+        $booking->status = 'checked_out';
+        $booking->save();
+
+        logActivity('checked_out', $booking, "Guest checked out - Booking #{$booking->id} - {$booking->guest_name}", null, 
+            ['status' => $oldStatus], 
+            ['status' => 'checked_out']
+        );
+
+        // Auto-update room cleaning status
+        $room = $booking->room;
+        if ($room) {
+            $oldRoomStatus = $room->cleaning_status;
+            $room->cleaning_status = 'dirty';
+            $room->save();
+            
+            logSystemActivity('room_cleaning_status_changed', $room, "Room {$room->room_number} automatically marked as DIRTY after checkout", null, 
+                ['cleaning_status' => $oldRoomStatus], 
+                ['cleaning_status' => 'dirty']
+            );
+        }
+
+        return redirect()->route('bookings.index')
+            ->with('success', 'Guest checked out successfully.');
+    }
+
+    /**
      * Ensure booking belongs to current hotel
      * Note: Route model binding already handles this for show method,
      * but we keep this for other methods that might need it

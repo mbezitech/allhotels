@@ -219,13 +219,36 @@
                     </li>
                 @endif
 
-                @if(auth()->user()->hasPermission('payments.view') || auth()->user()->isSuperAdmin())
+                @if(auth()->user()->hasPermission('payments.view') || auth()->user()->hasPermission('expenses.view') || auth()->user()->isSuperAdmin())
                     <li class="nav-section">Financial</li>
-                    <li class="nav-item">
-                        <a href="{{ route('payments.index') }}" class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
-                            Payments
-                        </a>
-                    </li>
+                    @if(auth()->user()->hasPermission('payments.view') || auth()->user()->isSuperAdmin())
+                        <li class="nav-item">
+                            <a href="{{ route('payments.index') }}" class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
+                                Payments
+                            </a>
+                        </li>
+                    @endif
+                    @if(auth()->user()->hasPermission('expenses.view') || auth()->user()->isSuperAdmin())
+                        <li class="nav-item">
+                            <a href="{{ route('expenses.index') }}" class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                                Expenses
+                            </a>
+                        </li>
+                    @endif
+                    @if(auth()->user()->hasPermission('expense_categories.view') || auth()->user()->isSuperAdmin())
+                        <li class="nav-item">
+                            <a href="{{ route('expense-categories.index') }}" class="nav-link {{ request()->routeIs('expense-categories.*') ? 'active' : '' }}">
+                                Expense Categories
+                            </a>
+                        </li>
+                    @endif
+                    @if(auth()->user()->hasPermission('expense_reports.view') || auth()->user()->isSuperAdmin())
+                        <li class="nav-item">
+                            <a href="{{ route('expense-reports.index') }}" class="nav-link {{ request()->routeIs('expense-reports.*') ? 'active' : '' }}">
+                                Expense Reports
+                            </a>
+                        </li>
+                    @endif
                 @endif
 
                 @if(auth()->user()->hasPermission('reports.view') || auth()->user()->isSuperAdmin())
@@ -271,6 +294,13 @@
 
                 @if(auth()->user()->hasPermission('activity_logs.view') || auth()->user()->isSuperAdmin())
                     <li class="nav-section">System</li>
+                    @if(auth()->user()->hasPermission('email_settings.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                        <li class="nav-item">
+                            <a href="{{ route('email-settings.index') }}" class="nav-link {{ request()->routeIs('email-settings.*') ? 'active' : '' }}">
+                                Email Settings
+                            </a>
+                        </li>
+                    @endif
                     <li class="nav-item">
                         <a href="{{ route('activity-logs.index') }}" class="nav-link {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
                             Activity Logs

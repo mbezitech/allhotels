@@ -100,6 +100,54 @@
             const guestWarning = document.getElementById('guest-warning');
             const submitBtn = document.querySelector('button[type="submit"]');
             
+            const checkInInput = document.getElementById('check_in');
+            const checkOutInput = document.getElementById('check_out');
+            const totalAmountInput = document.getElementById('total_amount');
+            const priceSummary = document.getElementById('price-summary');
+            const pricePerNightSpan = document.getElementById('price-per-night');
+            const nightsCountSpan = document.getElementById('nights-count');
+            const calculatedTotalSpan = document.getElementById('calculated-total');
+            
+            function calculateTotal() {
+                const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+                const checkIn = checkInInput.value;
+                const checkOut = checkOutInput.value;
+                
+                // Hide summary if room not selected or dates not filled
+                if (!selectedOption.value || !checkIn || !checkOut) {
+                    priceSummary.style.display = 'none';
+                    return;
+                }
+                
+                const checkInDate = new Date(checkIn);
+                const checkOutDate = new Date(checkOut);
+                
+                // Validate dates
+                if (checkOutDate <= checkInDate) {
+                    priceSummary.style.display = 'none';
+                    return;
+                }
+                
+                // Calculate number of nights
+                const diffTime = checkOutDate - checkInDate;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                // Get price per night
+                const pricePerNight = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+                
+                // Calculate total
+                const total = pricePerNight * diffDays;
+                
+                // Update display
+                pricePerNightSpan.textContent = pricePerNight.toFixed(2);
+                nightsCountSpan.textContent = diffDays;
+                calculatedTotalSpan.textContent = total.toFixed(2);
+                totalAmountInput.value = total.toFixed(2);
+                
+                // Show summary
+                priceSummary.style.display = 'block';
+            }
+            
             function updateCapacityInfo() {
                 const selectedOption = roomSelect.options[roomSelect.selectedIndex];
                 if (selectedOption.value) {
@@ -110,6 +158,7 @@
                     capacityInfo.style.display = 'none';
                 }
                 validateGuests();
+                calculateTotal();
             }
             
             function validateGuests() {
@@ -136,11 +185,18 @@
             }
             
             roomSelect.addEventListener('change', updateCapacityInfo);
+            checkInInput.addEventListener('change', calculateTotal);
+            checkOutInput.addEventListener('change', calculateTotal);
             adultsInput.addEventListener('input', validateGuests);
             childrenInput.addEventListener('input', validateGuests);
             
             // Initialize on page load
             updateCapacityInfo();
+            
+            // Calculate if values exist
+            if (checkInInput.value && checkOutInput.value && roomSelect.value) {
+                calculateTotal();
+            }
         });
     </script>
 </head>
@@ -162,8 +218,9 @@
                         @foreach($rooms as $room)
                             <option value="{{ $room->id }}" 
                                     data-capacity="{{ $room->capacity }}"
+                                    data-price="{{ $room->price_per_night }}"
                                     {{ old('room_id', $booking->room_id) == $room->id ? 'selected' : '' }}>
-                                {{ $room->room_number }} - {{ $room->roomType->name ?? 'N/A' }} (Capacity: {{ $room->capacity }})
+                                {{ $room->room_number }} - {{ $room->roomType->name ?? 'N/A' }} (Capacity: {{ $room->capacity }}, ${{ number_format($room->price_per_night, 2) }}/night)
                             </option>
                         @endforeach
                     </select>
@@ -251,9 +308,27 @@
                     @enderror
                 </div>
 
+                <!-- Price Calculation Summary -->
+                <div id="price-summary" style="display: none; background: #f8f9fa; border: 2px solid #667eea; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="color: #333; font-size: 18px; margin-bottom: 15px; margin-top: 0;">Price Summary</h3>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+                        <span style="color: #666;">Price per night:</span>
+                        <span style="font-weight: 600; color: #333;">$<span id="price-per-night">0.00</span></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px;">
+                        <span style="color: #666;">Number of nights:</span>
+                        <span style="font-weight: 600; color: #333;"><span id="nights-count">0</span> night(s)</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid #667eea; margin-top: 10px;">
+                        <span style="font-size: 18px; font-weight: 700; color: #333;">Total Amount:</span>
+                        <span style="font-size: 20px; font-weight: 700; color: #667eea;">$<span id="calculated-total">0.00</span></span>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label for="total_amount">Total Amount *</label>
-                    <input type="number" id="total_amount" name="total_amount" value="{{ old('total_amount', $booking->total_amount) }}" step="0.01" min="0" required>
+                    <input type="number" id="total_amount" name="total_amount" value="{{ old('total_amount', $booking->total_amount) }}" step="0.01" min="0" required readonly style="background: #f8f9fa; cursor: not-allowed;">
+                    <small style="color: #666; margin-top: 5px; display: block;">This amount is automatically calculated based on room price and number of nights.</small>
                 </div>
 
                 <div class="form-group">

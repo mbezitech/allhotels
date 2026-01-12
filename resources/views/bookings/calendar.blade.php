@@ -94,6 +94,18 @@
         margin-right: 4px;
         opacity: 0.9;
     }
+    .pending-payment-indicator {
+        display: inline-block;
+        font-size: 10px;
+        margin-left: 4px;
+        font-weight: bold;
+        color: #ffc107;
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    }
+    .booking-item.has-pending-payment {
+        border-left: 3px solid #ffc107;
+        box-shadow: 0 0 3px rgba(255, 193, 7, 0.5);
+    }
     .weekday-header {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
@@ -172,6 +184,10 @@
             <div class="legend-color cancelled"></div>
             <span><strong>Cancelled</strong> - Booking cancelled</span>
         </div>
+        <div class="legend-item">
+            <span style="font-size: 14px; color: #ffc107; font-weight: bold;">💰</span>
+            <span><strong>Pending Payment</strong> - Outstanding balance</span>
+        </div>
     </div>
 
     <div class="calendar-header">
@@ -201,13 +217,18 @@
                     @php
                         $statusClass = str_replace('_', '-', $booking->status);
                         $statusLabel = ucfirst(str_replace('_', ' ', $booking->status));
+                        $hasPendingPayment = $booking->outstanding_balance > 0 && $booking->status !== 'cancelled';
+                        $paymentInfo = $hasPendingPayment ? ' - Balance: $' . number_format($booking->outstanding_balance, 2) : '';
                     @endphp
                     <a href="{{ route('bookings.show', $booking->id) }}" 
-                       class="booking-item {{ $statusClass }}" 
-                       title="{{ $booking->guest_name }} - Room {{ $booking->room->room_number }} - Status: {{ $statusLabel }}" 
+                       class="booking-item {{ $statusClass }} {{ $hasPendingPayment ? 'has-pending-payment' : '' }}" 
+                       title="{{ $booking->guest_name }} - Room {{ $booking->room->room_number }} - Status: {{ $statusLabel }}{{ $paymentInfo }}" 
                        style="text-decoration: none; display: block;">
                         <span class="status-badge">{{ $statusLabel }}</span>
                         {{ $booking->guest_name }} ({{ $booking->room->room_number }})
+                        @if($hasPendingPayment)
+                            <span class="pending-payment-indicator" title="Pending Payment: ${{ number_format($booking->outstanding_balance, 2) }}">💰</span>
+                        @endif
                     </a>
                 @endforeach
             </div>

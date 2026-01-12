@@ -23,8 +23,9 @@ class PermissionsSeeder extends Seeder
             // ROOMS MODULE
             // ============================================
             ['name' => 'View Rooms', 'slug' => 'rooms.view', 'description' => 'View room list and details'],
-            ['name' => 'Manage Rooms', 'slug' => 'rooms.manage', 'description' => 'Create, edit, and delete rooms'],
+            ['name' => 'Manage Rooms', 'slug' => 'rooms.manage', 'description' => 'Create and manage rooms'],
             ['name' => 'Edit Rooms', 'slug' => 'rooms.edit', 'description' => 'Edit existing rooms'],
+            ['name' => 'Delete Rooms', 'slug' => 'rooms.delete', 'description' => 'Delete rooms'],
             
             // Room Types
             ['name' => 'View Room Types', 'slug' => 'room_types.view', 'description' => 'View room types list and details'],
@@ -99,7 +100,8 @@ class PermissionsSeeder extends Seeder
             
             // Tasks
             ['name' => 'View Tasks', 'slug' => 'tasks.view', 'description' => 'View tasks list and details'],
-            ['name' => 'Manage Tasks', 'slug' => 'tasks.manage', 'description' => 'Create, edit, and delete tasks'],
+            ['name' => 'Create Tasks', 'slug' => 'tasks.create', 'description' => 'Create new tasks'],
+            ['name' => 'Manage Tasks', 'slug' => 'tasks.manage', 'description' => 'Delete tasks'],
             ['name' => 'Edit Tasks', 'slug' => 'tasks.edit', 'description' => 'Edit existing tasks'],
             
             // ============================================
@@ -123,6 +125,27 @@ class PermissionsSeeder extends Seeder
             // ACTIVITY LOGS MODULE
             // ============================================
             ['name' => 'View Activity Logs', 'slug' => 'activity_logs.view', 'description' => 'View system activity logs and audit trail'],
+            
+            // ============================================
+            // EMAIL SETTINGS MODULE
+            // ============================================
+            ['name' => 'View Email Settings', 'slug' => 'email_settings.view', 'description' => 'View email settings'],
+            ['name' => 'Manage Email Settings', 'slug' => 'email_settings.manage', 'description' => 'Create, edit, and manage email settings'],
+            
+            // ============================================
+            // EXPENSES MODULE
+            // ============================================
+            ['name' => 'View Expenses', 'slug' => 'expenses.view', 'description' => 'View expenses list'],
+            ['name' => 'Create Expenses', 'slug' => 'expenses.create', 'description' => 'Add new expenses'],
+            ['name' => 'Edit Expenses', 'slug' => 'expenses.edit', 'description' => 'Edit existing expenses'],
+            ['name' => 'Delete Expenses', 'slug' => 'expenses.delete', 'description' => 'Delete expenses'],
+            ['name' => 'Manage Expenses', 'slug' => 'expenses.manage', 'description' => 'Full access to manage expenses'],
+            
+            ['name' => 'View Expense Categories', 'slug' => 'expense_categories.view', 'description' => 'View expense categories'],
+            ['name' => 'Manage Expense Categories', 'slug' => 'expense_categories.manage', 'description' => 'Create, edit, and delete expense categories'],
+            ['name' => 'Edit Expense Categories', 'slug' => 'expense_categories.edit', 'description' => 'Edit expense categories'],
+            
+            ['name' => 'View Expense Reports', 'slug' => 'expense_reports.view', 'description' => 'View expense reports and summaries'],
         ];
 
         foreach ($permissions as $permission) {

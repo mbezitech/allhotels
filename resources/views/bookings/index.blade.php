@@ -349,6 +349,13 @@
                         <span class="badge badge-{{ str_replace('_', '-', $booking->status) }}">
                             {{ ucfirst(str_replace('_', ' ', $booking->status)) }}
                         </span>
+                        @if($booking->outstanding_balance > 0 && $booking->status !== 'cancelled')
+                            <div style="margin-top: 4px;">
+                                <span class="badge" style="background: #ffc107; color: #856404; font-size: 11px;">
+                                    Pending Payment
+                                </span>
+                            </div>
+                        @endif
                         @if($booking->status === 'cancelled' && $booking->cancellation_reason)
                             <div style="font-size: 11px; color: #dc3545; margin-top: 4px;">
                                 {{ $booking->cancellation_reason }}
@@ -359,17 +366,44 @@
                         @endif
                     </td>
                     <td>
-                        <a href="{{ route('bookings.show', $booking) }}" class="btn" style="background: #3498db; color: white; margin-right: 5px;">View</a>
-                        @if(auth()->user()->hasPermission('bookings.edit') || auth()->user()->isSuperAdmin())
-                            <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-edit">Edit</a>
-                        @endif
-                        @if(auth()->user()->hasPermission('bookings.delete') || auth()->user()->isSuperAdmin())
-                            <form action="{{ route('bookings.destroy', $booking) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">Delete</button>
-                            </form>
-                        @endif
+                        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                            <a href="{{ route('bookings.show', $booking) }}" class="btn" style="background: #3498db; color: white; padding: 6px 12px; font-size: 12px;">View</a>
+                            
+                            @if(auth()->user()->hasPermission('bookings.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                @php
+                                    $today = \Carbon\Carbon::today();
+                                    $checkInDate = \Carbon\Carbon::parse($booking->check_in);
+                                    $checkOutDate = \Carbon\Carbon::parse($booking->check_out);
+                                    $canCheckIn = $booking->status === 'confirmed' 
+                                        && $today->gte($checkInDate) 
+                                        && $today->lte($checkOutDate)
+                                        && $booking->isFullyPaid();
+                                @endphp
+                                @if($canCheckIn)
+                                    <form action="{{ route('bookings.check-in', $booking) }}" method="POST" style="display: inline;" onsubmit="return confirm('Check in {{ $booking->guest_name }}?')">
+                                        @csrf
+                                        <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Check In</button>
+                                    </form>
+                                @endif
+                                
+                                @if($booking->status === 'checked_in')
+                                    <form action="{{ route('bookings.check-out', $booking) }}" method="POST" style="display: inline;" onsubmit="return confirm('Check out {{ $booking->guest_name }}?')">
+                                        @csrf
+                                        <button type="submit" class="btn" style="background: #ff9800; color: white; padding: 6px 12px; font-size: 12px;">Check Out</button>
+                                    </form>
+                                @endif
+                                
+                                <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
+                            @endif
+                            
+                            @if(auth()->user()->hasPermission('bookings.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                <form action="{{ route('bookings.destroy', $booking) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+                                </form>
+                            @endif
+                        </div>
                     </td>
                 </tr>
             @empty

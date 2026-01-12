@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Hotel extends Model
@@ -75,6 +76,30 @@ class Hotel extends Model
     public function roomTypes(): HasMany
     {
         return $this->hasMany(RoomType::class);
+    }
+
+    /**
+     * Get email settings for this hotel
+     */
+    public function emailSettings(): HasOne
+    {
+        return $this->hasOne(EmailSettings::class);
+    }
+
+    /**
+     * Get all expense categories for this hotel
+     */
+    public function expenseCategories(): HasMany
+    {
+        return $this->hasMany(ExpenseCategory::class);
+    }
+
+    /**
+     * Get all expenses for this hotel
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
     }
 
     /**

@@ -188,9 +188,11 @@
                         @endif
                     </td>
                     <td>
-                        @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
+                        @if(auth()->user()->hasPermission('rooms.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
                             <a href="{{ route('rooms.edit', $room) }}" class="btn btn-edit">Edit</a>
-                            <form action="{{ route('rooms.destroy', $room) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
+                        @endif
+                        @if(auth()->user()->hasPermission('rooms.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                            <form action="{{ route('rooms.destroy', $room) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this room? This action cannot be undone.')">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-danger">Delete</button>

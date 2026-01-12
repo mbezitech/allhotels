@@ -50,7 +50,7 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">Task Details</h2>
     <div style="display: flex; gap: 10px;">
-        @if(auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin())
+        @if(auth()->user()->hasPermission('tasks.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
             <a href="{{ route('tasks.edit', $task) }}" class="btn" style="background: #3498db; color: white;">Edit</a>
         @endif
         <a href="{{ route('tasks.index') }}" class="btn" style="background: #95a5a6; color: white;">Back to Tasks</a>

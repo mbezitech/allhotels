@@ -158,33 +158,46 @@
             <tbody>
                 @foreach($usersWithRoles as $user)
                     <tr>
-                        <td><strong>{{ $user->name }}</strong></td>
+                        <td>
+                            <strong>{{ $user->name }}</strong>
+                            @if($hotel->owner_id == $user->id)
+                                <span style="font-size: 11px; color: #667eea; margin-left: 5px;">(Owner)</span>
+                            @endif
+                        </td>
                         <td>{{ $user->email }}</td>
                         <td>
-                            @foreach($user->roles as $role)
-                                <span class="badge">{{ $role->name }}</span>
-                            @endforeach
+                            @if($user->roles->count() > 0)
+                                @foreach($user->roles as $role)
+                                    <span class="badge">{{ $role->name }}</span>
+                                @endforeach
+                            @else
+                                <span style="color: #999; font-size: 12px;">No roles assigned</span>
+                            @endif
                         </td>
                         <td>
-                            @foreach($user->roles as $role)
-                                <form action="{{ route('user-roles.destroy', ['user' => $user->id, 'role' => $role->id]) }}" 
-                                      method="POST" 
-                                      style="display: inline; margin-right: 5px;"
-                                      onsubmit="return confirm('Remove {{ $role->name }} role from {{ $user->name }}?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">
-                                        Remove {{ $role->name }}
-                                    </button>
-                                </form>
-                            @endforeach
+                            @if($user->roles->count() > 0)
+                                @foreach($user->roles as $role)
+                                    <form action="{{ route('user-roles.destroy', ['user' => $user->id, 'role' => $role->id]) }}" 
+                                          method="POST" 
+                                          style="display: inline; margin-right: 5px;"
+                                          onsubmit="return confirm('Remove {{ $role->name }} role from {{ $user->name }}?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">
+                                            Remove {{ $role->name }}
+                                        </button>
+                                    </form>
+                                @endforeach
+                            @else
+                                <span style="color: #999; font-size: 12px;">-</span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
     @else
-        <p style="color: #999; text-align: center; padding: 40px;">No role assignments yet for this hotel</p>
+        <p style="color: #999; text-align: center; padding: 40px;">No users found for this hotel. Users must be assigned roles in this hotel to appear here.</p>
     @endif
 </div>
 @endsection

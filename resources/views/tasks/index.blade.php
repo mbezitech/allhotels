@@ -91,7 +91,7 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
     <h2 style="color: #333; font-size: 24px;">All Tasks</h2>
-    @if(auth()->user()->hasPermission('tasks.manage', session('hotel_id')) || auth()->user()->isSuperAdmin())
+    @if(auth()->user()->hasPermission('tasks.create', session('hotel_id')) || auth()->user()->isSuperAdmin())
         <a href="{{ route('tasks.create') }}" class="btn btn-primary">Create Task</a>
     @endif
 </div>
@@ -253,7 +253,7 @@
                     </td>
                     <td>
                         <a href="{{ route('tasks.show', $task) }}" class="btn" style="background: #3498db; color: white; padding: 6px 12px; font-size: 12px;">View</a>
-                        @if(auth()->user()->hasPermission('tasks.manage', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                        @if(auth()->user()->hasPermission('tasks.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
                             <a href="{{ route('tasks.edit', $task) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
                         @endif
                     </td>
@@ -271,7 +271,7 @@
                                     No tasks have been created yet. Create your first task to get started.
                                 @endif
                             </div>
-                            @if(auth()->user()->hasPermission('tasks.manage', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                            @if(auth()->user()->hasPermission('tasks.create', session('hotel_id')) || auth()->user()->isSuperAdmin())
                                 <a href="{{ route('tasks.create') }}" class="btn btn-primary" style="margin-top: 10px;">Create Your First Task</a>
                             @endif
                         </div>
