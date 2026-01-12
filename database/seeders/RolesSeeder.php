@@ -24,6 +24,8 @@ class RolesSeeder extends Seeder
         );
 
         $managerPermissions = [
+            // Dashboard
+            'dashboard.view',
             // Rooms
             'rooms.view', 'rooms.manage', 'rooms.edit',
             'room_types.view', 'room_types.manage', 'room_types.edit',
@@ -41,7 +43,7 @@ class RolesSeeder extends Seeder
             'reports.view',
             // Housekeeping
             'housekeeping.view', 'housekeeping.manage', 'housekeeping.edit',
-            'housekeeping_records.view', 'housekeeping_records.manage', 'housekeeping_records.edit',
+            'housekeeping_records.view', 'housekeeping_records.manage', 'housekeeping_records.edit', 'housekeeping_records.inspect', 'housekeeping_records.resolve',
             'housekeeping_reports.view',
             'hotel_areas.view', 'hotel_areas.manage', 'hotel_areas.edit',
             'tasks.view', 'tasks.manage', 'tasks.edit',
@@ -65,6 +67,8 @@ class RolesSeeder extends Seeder
         );
 
         $receptionistPermissions = [
+            // Dashboard
+            'dashboard.view',
             // Rooms
             'rooms.view',
             'room_types.view',
@@ -94,6 +98,8 @@ class RolesSeeder extends Seeder
         );
 
         $staffPermissions = [
+            // Dashboard
+            'dashboard.view',
             // POS
             'pos.view', 'pos.sell',
             // Stock

@@ -135,7 +135,7 @@
             @endif
         </div>
         
-        @if(!$housekeepingRecord->issue_resolved && (auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin()))
+        @if(!$housekeepingRecord->issue_resolved && (auth()->user()->hasPermission('housekeeping_records.resolve', session('hotel_id')) || auth()->user()->isSuperAdmin()))
             <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
                 <button onclick="showResolveModal({{ $housekeepingRecord->id }})" class="btn" style="background: #28a745; color: white;">Resolve Issue</button>
             </div>
@@ -170,7 +170,7 @@
         </div>
     @endif
 
-    @if($housekeepingRecord->cleaning_status == 'clean')
+    @if($housekeepingRecord->cleaning_status == 'clean' && (auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->user()->isSuperAdmin()))
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee;">
             <form action="{{ route('housekeeping-records.inspect', $housekeepingRecord) }}" method="POST">
                 @csrf

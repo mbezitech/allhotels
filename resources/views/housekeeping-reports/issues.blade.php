@@ -131,7 +131,7 @@
                 </div>
                 <div style="display: flex; gap: 10px;">
                     <a href="{{ route('housekeeping-records.show', $issue) }}" class="btn" style="background: #3498db; color: white; padding: 6px 12px; font-size: 12px;">View Details</a>
-                    @if(!$issue->issue_resolved && (auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin()))
+                    @if(!$issue->issue_resolved && (auth()->user()->hasPermission('housekeeping_records.resolve', session('hotel_id')) || auth()->user()->isSuperAdmin()))
                         <button onclick="showResolveModal({{ $issue->id }})" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Resolve Issue</button>
                     @endif
                 </div>

@@ -24,7 +24,7 @@ class RoleController extends Controller
      */
     public function create()
     {
-        $permissions = Permission::all();
+        $permissions = Permission::orderBy('slug')->get();
         
         return view('roles.create', compact('permissions'));
     }
@@ -73,7 +73,7 @@ class RoleController extends Controller
      */
     public function edit(Role $role)
     {
-        $permissions = Permission::all();
+        $permissions = Permission::orderBy('slug')->get();
         $role->load('permissions');
         
         return view('roles.edit', compact('role', 'permissions'));

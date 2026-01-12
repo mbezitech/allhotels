@@ -15,6 +15,11 @@ class PermissionsSeeder extends Seeder
     {
         $permissions = [
             // ============================================
+            // DASHBOARD MODULE
+            // ============================================
+            ['name' => 'View Dashboard', 'slug' => 'dashboard.view', 'description' => 'Access and view the dashboard'],
+            
+            // ============================================
             // ROOMS MODULE
             // ============================================
             ['name' => 'View Rooms', 'slug' => 'rooms.view', 'description' => 'View room list and details'],
@@ -81,6 +86,8 @@ class PermissionsSeeder extends Seeder
             ['name' => 'View Housekeeping Records', 'slug' => 'housekeeping_records.view', 'description' => 'View housekeeping records'],
             ['name' => 'Manage Housekeeping Records', 'slug' => 'housekeeping_records.manage', 'description' => 'Create, edit, and manage housekeeping records'],
             ['name' => 'Edit Housekeeping Records', 'slug' => 'housekeeping_records.edit', 'description' => 'Edit existing housekeeping records'],
+            ['name' => 'Inspect & Approve Housekeeping', 'slug' => 'housekeeping_records.inspect', 'description' => 'Inspect and approve housekeeping records (mark as inspected/ready)'],
+            ['name' => 'Resolve Housekeeping Issues', 'slug' => 'housekeeping_records.resolve', 'description' => 'Resolve issues found during housekeeping inspections'],
             
             // Housekeeping Reports
             ['name' => 'View Housekeeping Reports', 'slug' => 'housekeeping_reports.view', 'description' => 'View housekeeping reports and analytics'],

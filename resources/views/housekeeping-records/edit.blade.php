@@ -82,7 +82,9 @@
                     <option value="dirty" {{ old('cleaning_status', $housekeepingRecord->cleaning_status) == 'dirty' ? 'selected' : '' }}>Dirty</option>
                     <option value="cleaning" {{ old('cleaning_status', $housekeepingRecord->cleaning_status) == 'cleaning' ? 'selected' : '' }}>Cleaning</option>
                     <option value="clean" {{ old('cleaning_status', $housekeepingRecord->cleaning_status) == 'clean' ? 'selected' : '' }}>Clean</option>
-                    <option value="inspected" {{ old('cleaning_status', $housekeepingRecord->cleaning_status) == 'inspected' ? 'selected' : '' }}>Inspected</option>
+                    @if(auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                        <option value="inspected" {{ old('cleaning_status', $housekeepingRecord->cleaning_status) == 'inspected' ? 'selected' : '' }}>Inspected</option>
+                    @endif
                 </select>
                 @error('cleaning_status')
                     <span class="error">{{ $message }}</span>

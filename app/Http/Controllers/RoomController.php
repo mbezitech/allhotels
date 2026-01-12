@@ -164,6 +164,14 @@ class RoomController extends Controller
         
         $validated['images'] = $imagePaths;
 
+        // Check permission if trying to set cleaning_status to "inspected"
+        if (isset($validated['cleaning_status']) && $validated['cleaning_status'] === 'inspected') {
+            $user = auth()->user();
+            if (!$user->isSuperAdmin() && !$user->hasPermission('housekeeping_records.inspect', $hotelId)) {
+                return back()->withErrors(['cleaning_status' => 'You do not have permission to set cleaning status to "Inspected".']);
+            }
+        }
+
         // Track changes for logging
         $oldStatus = $room->status;
         $oldCleaningStatus = $room->cleaning_status;

@@ -96,6 +96,24 @@ class HousekeepingRecordController extends Controller
     public function create(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // For super admins, allow hotel selection via request parameter
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $hotelId = $request->hotel_id;
+        }
+        
+        // Super admins need to select a hotel if not provided
+        if ($isSuperAdmin && !$hotelId) {
+            $hotels = \App\Models\Hotel::orderBy('name')->get();
+            return view('housekeeping-records.select-hotel', compact('hotels'));
+        }
+        
+        if (!$hotelId) {
+            return redirect()->route('login')
+                ->with('error', 'Please select a hotel to continue.');
+        }
+        
         $rooms = Room::where('hotel_id', $hotelId)->orderBy('room_number')->get();
         $areas = HotelArea::where('hotel_id', $hotelId)->where('is_active', true)->orderBy('name')->get();
         $users = User::all();
@@ -103,8 +121,10 @@ class HousekeepingRecordController extends Controller
         // Pre-select room if provided
         $roomId = $request->get('room_id');
         $areaId = $request->get('area_id');
+        
+        $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
 
-        return view('housekeeping-records.create', compact('rooms', 'areas', 'users', 'roomId', 'areaId'));
+        return view('housekeeping-records.create', compact('rooms', 'areas', 'users', 'roomId', 'areaId', 'hotels', 'isSuperAdmin', 'hotelId'));
     }
 
     /**
@@ -146,6 +166,12 @@ class HousekeepingRecordController extends Controller
             }
         }
 
+        // For super admins, allow hotel selection via request parameter
+        if (auth()->user()->isSuperAdmin() && $request->has('hotel_id') && $request->hotel_id) {
+            $hotelId = $request->hotel_id;
+            session(['hotel_id' => $hotelId]);
+        }
+        
         $validated['hotel_id'] = $hotelId;
         $validated['has_issues'] = !empty($validated['issues_found']);
 
@@ -164,8 +190,12 @@ class HousekeepingRecordController extends Controller
             }
         }
 
-        // Set inspected_at if status is inspected
+        // Set inspected_at if status is inspected (only if user has permission)
         if ($validated['cleaning_status'] === 'inspected') {
+            $user = auth()->user();
+            if (!$user->isSuperAdmin() && !$user->hasPermission('housekeeping_records.inspect', $hotelId)) {
+                return back()->withErrors(['cleaning_status' => 'You do not have permission to set status to "Inspected".']);
+            }
             $validated['inspected_by'] = Auth::id();
             $validated['inspected_at'] = now();
         }
@@ -267,10 +297,17 @@ class HousekeepingRecordController extends Controller
             $validated['duration_minutes'] = $started->diffInMinutes($completed);
         }
 
-        // Auto-set inspected_by and inspected_at if status is inspected
-        if ($validated['cleaning_status'] === 'inspected' && !$housekeepingRecord->inspected_by) {
-            $validated['inspected_by'] = Auth::id();
-            $validated['inspected_at'] = now();
+        // Auto-set inspected_by and inspected_at if status is inspected (only if user has permission)
+        if ($validated['cleaning_status'] === 'inspected') {
+            $user = auth()->user();
+            $hotelId = session('hotel_id') ?? $housekeepingRecord->hotel_id;
+            if (!$user->isSuperAdmin() && !$user->hasPermission('housekeeping_records.inspect', $hotelId)) {
+                return back()->withErrors(['cleaning_status' => 'You do not have permission to set status to "Inspected".']);
+            }
+            if (!$housekeepingRecord->inspected_by) {
+                $validated['inspected_by'] = Auth::id();
+                $validated['inspected_at'] = now();
+            }
         }
 
         $oldStatus = $housekeepingRecord->cleaning_status;
@@ -392,6 +429,14 @@ class HousekeepingRecordController extends Controller
     {
         $this->authorizeHotel($housekeepingRecord);
         
+        // Check if user has permission to inspect
+        $user = auth()->user();
+        $hotelId = session('hotel_id') ?? $housekeepingRecord->hotel_id;
+        
+        if (!$user->isSuperAdmin() && !$user->hasPermission('housekeeping_records.inspect', $hotelId)) {
+            abort(403, 'You do not have permission to inspect and approve housekeeping records.');
+        }
+        
         $oldStatus = $housekeepingRecord->cleaning_status;
         $housekeepingRecord->update([
             'cleaning_status' => 'inspected',
@@ -424,6 +469,14 @@ class HousekeepingRecordController extends Controller
     public function resolveIssue(Request $request, HousekeepingRecord $housekeepingRecord)
     {
         $this->authorizeHotel($housekeepingRecord);
+
+        // Check if user has permission to resolve issues
+        $user = auth()->user();
+        $hotelId = session('hotel_id') ?? $housekeepingRecord->hotel_id;
+        
+        if (!$user->isSuperAdmin() && !$user->hasPermission('housekeeping_records.resolve', $hotelId)) {
+            abort(403, 'You do not have permission to resolve housekeeping issues.');
+        }
 
         // Only allow resolving if there are issues
         if (!$housekeepingRecord->has_issues || empty($housekeepingRecord->issues_found)) {

@@ -117,21 +117,55 @@
 
                 <div class="form-group">
                     <label>Permissions</label>
-                    <div class="checkbox-group">
-                        @foreach($permissions as $permission)
-                            <div class="checkbox-item">
-                                <input type="checkbox" 
-                                       name="permissions[]" 
-                                       value="{{ $permission->id }}"
-                                       id="perm_{{ $permission->id }}"
-                                       {{ $role->permissions->contains($permission->id) ? 'checked' : '' }}>
-                                <label for="perm_{{ $permission->id }}" style="margin: 0; font-weight: normal;">
-                                    <strong>{{ $permission->name }}</strong><br>
-                                    <small style="color: #666;">{{ $permission->slug }}</small>
-                                </label>
+                    @php
+                        $groupedPermissions = $permissions->groupBy(function($permission) {
+                            $parts = explode('.', $permission->slug);
+                            $module = $parts[0];
+                            // Map module names to display names
+                            $moduleNames = [
+                                'dashboard' => 'Dashboard',
+                                'rooms' => 'Rooms',
+                                'room_types' => 'Room Types',
+                                'bookings' => 'Bookings',
+                                'pos' => 'POS Sales',
+                                'stock' => 'Stock Management',
+                                'extras' => 'Products/Extras',
+                                'extra_categories' => 'Product Categories',
+                                'payments' => 'Payments',
+                                'housekeeping' => 'Housekeeping',
+                                'housekeeping_records' => 'Housekeeping Records',
+                                'housekeeping_reports' => 'Housekeeping Reports',
+                                'hotel_areas' => 'Hotel Areas',
+                                'tasks' => 'Tasks',
+                                'reports' => 'Reports',
+                                'users' => 'Users',
+                                'roles' => 'Roles',
+                                'activity_logs' => 'Activity Logs',
+                            ];
+                            return $moduleNames[$module] ?? ucfirst(str_replace('_', ' ', $module));
+                        });
+                    @endphp
+                    
+                    @foreach($groupedPermissions as $moduleName => $modulePermissions)
+                        <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <h3 style="margin: 0 0 15px 0; color: #333; font-size: 16px; font-weight: 600;">{{ $moduleName }}</h3>
+                            <div class="checkbox-group">
+                                @foreach($modulePermissions as $permission)
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" 
+                                               name="permissions[]" 
+                                               value="{{ $permission->id }}"
+                                               id="perm_{{ $permission->id }}"
+                                               {{ $role->permissions->contains($permission->id) ? 'checked' : '' }}>
+                                        <label for="perm_{{ $permission->id }}" style="margin: 0; font-weight: normal;">
+                                            <strong>{{ $permission->name }}</strong><br>
+                                            <small style="color: #666;">{{ $permission->slug }}</small>
+                                        </label>
+                                    </div>
+                                @endforeach
                             </div>
-                        @endforeach
-                    </div>
+                        </div>
+                    @endforeach
                 </div>
 
                 <div style="margin-top: 30px;">

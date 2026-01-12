@@ -175,10 +175,17 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ route('housekeeping-reports.index') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.*') ? 'active' : '' }}">
+                        <a href="{{ route('housekeeping-reports.index') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.*') && !request()->routeIs('housekeeping-reports.issues') ? 'active' : '' }}">
                             Reports
                         </a>
                     </li>
+                    @if(auth()->user()->hasPermission('housekeeping_reports.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                    <li class="nav-item">
+                        <a href="{{ route('housekeeping-reports.issues') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.issues') ? 'active' : '' }}">
+                            Issues & Resolutions
+                        </a>
+                    </li>
+                    @endif
                     <li class="nav-item">
                         <a href="{{ route('tasks.index') }}" class="nav-link {{ request()->routeIs('tasks.*') ? 'active' : '' }}">
                             Tasks

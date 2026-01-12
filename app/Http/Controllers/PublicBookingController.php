@@ -48,9 +48,20 @@ class PublicBookingController extends Controller
             'guest_phone' => 'required|string|max:255',
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
-            'adults' => 'required|integer|min:1|max:' . $room->capacity,
+            'adults' => 'required|integer|min:1',
             'children' => 'nullable|integer|min:0',
         ]);
+
+        // Check total guests don't exceed room capacity
+        $totalGuests = $validated['adults'] + ($validated['children'] ?? 0);
+        if ($totalGuests > $room->capacity) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'adults' => "Total guests (adults + children) cannot exceed room capacity of {$room->capacity}.",
+                    'children' => "Total guests (adults + children) cannot exceed room capacity of {$room->capacity}.",
+                ]);
+        }
 
         // Check room availability
         if (!$room->isAvailableForDates($validated['check_in'], $validated['check_out'])) {

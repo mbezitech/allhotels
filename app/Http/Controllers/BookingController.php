@@ -116,6 +116,7 @@ class BookingController extends Controller
         $hotelId = session('hotel_id');
         $rooms = Room::where('hotel_id', $hotelId)
             ->where('status', 'available')
+            ->with('roomType')
             ->orderBy('room_number')
             ->get();
 
@@ -146,6 +147,15 @@ class BookingController extends Controller
         // Ensure room belongs to current hotel (unless super admin)
         if (!auth()->user()->isSuperAdmin() && $room->hotel_id != $hotelId) {
             abort(403, 'Unauthorized access to this room.');
+        }
+
+        // Check total guests don't exceed room capacity
+        $totalGuests = $validated['adults'] + ($validated['children'] ?? 0);
+        if ($totalGuests > $room->capacity) {
+            throw ValidationException::withMessages([
+                'adults' => "Total guests (adults + children) cannot exceed room capacity of {$room->capacity}.",
+                'children' => "Total guests (adults + children) cannot exceed room capacity of {$room->capacity}.",
+            ]);
         }
 
         // Check room availability
@@ -193,6 +203,7 @@ class BookingController extends Controller
         
         $hotelId = session('hotel_id');
         $rooms = Room::where('hotel_id', $hotelId)
+            ->with('roomType')
             ->orderBy('room_number')
             ->get();
 
@@ -222,6 +233,15 @@ class BookingController extends Controller
         ]);
 
         $room = Room::findOrFail($validated['room_id']);
+
+        // Check total guests don't exceed room capacity
+        $totalGuests = $validated['adults'] + ($validated['children'] ?? 0);
+        if ($totalGuests > $room->capacity) {
+            throw ValidationException::withMessages([
+                'adults' => "Total guests (adults + children) cannot exceed room capacity of {$room->capacity}.",
+                'children' => "Total guests (adults + children) cannot exceed room capacity of {$room->capacity}.",
+            ]);
+        }
 
         // Check room availability (excluding current booking)
         if (!$room->isAvailableForDates($validated['check_in'], $validated['check_out'], $booking->id)) {

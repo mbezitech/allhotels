@@ -125,8 +125,19 @@
                             <td><code>{{ $role->slug }}</code></td>
                             <td>{{ $role->description ?? '-' }}</td>
                             <td>
-                                @foreach($role->permissions as $permission)
-                                    <span class="badge">{{ $permission->slug }}</span>
+                                @php
+                                    $groupedPerms = $role->permissions->groupBy(function($permission) {
+                                        $parts = explode('.', $permission->slug);
+                                        return $parts[0];
+                                    });
+                                @endphp
+                                @foreach($groupedPerms as $module => $modulePerms)
+                                    <div style="margin-bottom: 8px;">
+                                        <strong style="color: #667eea; font-size: 11px; text-transform: uppercase;">{{ ucfirst(str_replace('_', ' ', $module)) }}:</strong>
+                                        @foreach($modulePerms as $permission)
+                                            <span class="badge" style="font-size: 11px;">{{ $permission->slug }}</span>
+                                        @endforeach
+                                    </div>
                                 @endforeach
                             </td>
                             <td>

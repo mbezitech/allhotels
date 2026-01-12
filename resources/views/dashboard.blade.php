@@ -327,26 +327,33 @@
 @endif
 
 @if($hotel)
+@if($hotel && (
+    (isset($canViewBookings) && $canViewBookings && (auth()->user()->hasPermission('bookings.create', $hotel->id) || auth()->user()->isSuperAdmin())) ||
+    (isset($canViewSales) && $canViewSales && (auth()->user()->hasPermission('pos.sell', $hotel->id) || auth()->user()->isSuperAdmin())) ||
+    (isset($canViewPayments) && $canViewPayments && (auth()->user()->hasPermission('payments.create', $hotel->id) || auth()->user()->isSuperAdmin())) ||
+    (isset($canViewReports) && $canViewReports) ||
+    auth()->user()->isSuperAdmin()
+))
 <!-- Quick Actions -->
 <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
     <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Quick Actions</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-        @if($hotel && (auth()->user()->hasPermission('bookings.create') || auth()->user()->isSuperAdmin()))
+        @if($hotel && isset($canViewBookings) && $canViewBookings && (auth()->user()->hasPermission('bookings.create', $hotel->id) || auth()->user()->isSuperAdmin()))
             <a href="{{ route('bookings.create') }}" style="display: block; padding: 15px; background: #667eea; color: white; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500;">
                 New Booking
             </a>
         @endif
-        @if($hotel && (auth()->user()->hasPermission('pos.sell') || auth()->user()->isSuperAdmin()))
+        @if($hotel && isset($canViewSales) && $canViewSales && (auth()->user()->hasPermission('pos.sell', $hotel->id) || auth()->user()->isSuperAdmin()))
             <a href="{{ route('pos-sales.create') }}" style="display: block; padding: 15px; background: #4caf50; color: white; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500;">
                 New POS Sale
             </a>
         @endif
-        @if($hotel && (auth()->user()->hasPermission('payments.create') || auth()->user()->isSuperAdmin()))
+        @if($hotel && isset($canViewPayments) && $canViewPayments && (auth()->user()->hasPermission('payments.create', $hotel->id) || auth()->user()->isSuperAdmin()))
             <a href="{{ route('payments.create') }}" style="display: block; padding: 15px; background: #ff9800; color: white; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500;">
                 Record Payment
             </a>
         @endif
-        @if($hotel && (auth()->user()->hasPermission('reports.view') || auth()->user()->isSuperAdmin()))
+        @if($hotel && isset($canViewReports) && $canViewReports)
             <a href="{{ route('reports.index') }}" style="display: block; padding: 15px; background: #2196f3; color: white; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500;">
                 View Reports
             </a>
@@ -358,8 +365,10 @@
         @endif
     </div>
 </div>
+@endif
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+    @if(isset($canViewRooms) && $canViewRooms)
     <!-- Rooms Card -->
     <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -386,7 +395,9 @@
         <div style="font-size: 32px; font-weight: bold; color: #333; margin-bottom: 10px;">{{ $occupancyRate }}%</div>
         <div style="font-size: 12px; color: #999;">{{ $occupiedRooms }} of {{ $totalRooms }} rooms</div>
     </div>
+    @endif
 
+    @if(isset($canViewSales) && $canViewSales)
     <!-- Today's Sales Card -->
     <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -398,7 +409,9 @@
         <div style="font-size: 32px; font-weight: bold; color: #333; margin-bottom: 10px;">${{ number_format($todaySales, 2) }}</div>
         <div style="font-size: 12px; color: #999;">{{ $todaySalesCount }} transactions</div>
     </div>
+    @endif
 
+    @if(isset($canViewPayments) && $canViewPayments)
     <!-- Today's Payments Card -->
     <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -410,13 +423,16 @@
         <div style="font-size: 32px; font-weight: bold; color: #333; margin-bottom: 10px;">${{ number_format($todayPayments, 2) }}</div>
         <div style="font-size: 12px; color: #999;">Received today</div>
     </div>
+    @endif
 </div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+    @if((isset($canViewBookings) && $canViewBookings) || (isset($canViewSales) && $canViewSales) || (isset($canViewPayments) && $canViewPayments))
     <!-- Today's Activity -->
     <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Today's Activity</h3>
         <div style="display: flex; flex-direction: column; gap: 15px;">
+            @if(isset($canViewBookings) && $canViewBookings)
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
                 <div>
                     <div style="font-weight: 500; color: #333;">Check-ins</div>
@@ -438,9 +454,30 @@
                 </div>
                 <div style="font-size: 24px; font-weight: bold; color: #f44336;">{{ $pendingBookings }}</div>
             </div>
+            @endif
+            @if(isset($canViewSales) && $canViewSales)
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                <div>
+                    <div style="font-weight: 500; color: #333;">Today's Sales</div>
+                    <div style="font-size: 12px; color: #999;">Revenue</div>
+                </div>
+                <div style="font-size: 24px; font-weight: bold; color: #2196f3;">${{ number_format($todaySales, 2) }}</div>
+            </div>
+            @endif
+            @if(isset($canViewPayments) && $canViewPayments)
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                <div>
+                    <div style="font-weight: 500; color: #333;">Today's Payments</div>
+                    <div style="font-size: 12px; color: #999;">Received</div>
+                </div>
+                <div style="font-size: 24px; font-weight: bold; color: #9c27b0;">${{ number_format($todayPayments, 2) }}</div>
+            </div>
+            @endif
         </div>
     </div>
+    @endif
 
+    @if(isset($canViewBookings) && $canViewBookings)
     <!-- Recent Bookings -->
     <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -494,8 +531,98 @@
             <p style="color: #999; text-align: center; padding: 20px;">No recent bookings</p>
         @endif
     </div>
+    @endif
 </div>
 
+@if(isset($canViewHousekeeping) && $canViewHousekeeping)
+<!-- Unresolved Issues -->
+<div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+            <h3 style="color: #333; font-size: 18px; margin-bottom: 5px;">Unresolved Housekeeping Issues</h3>
+            <div style="font-size: 14px; color: #666;">
+                @if(isset($unresolvedIssuesCount) && $unresolvedIssuesCount > 0)
+                    <span style="color: #dc3545; font-weight: 600;">{{ $unresolvedIssuesCount }} issue{{ $unresolvedIssuesCount !== 1 ? 's' : '' }} require{{ $unresolvedIssuesCount === 1 ? 's' : '' }} attention</span>
+                @else
+                    <span style="color: #28a745;">All issues resolved ✓</span>
+                @endif
+            </div>
+        </div>
+        <a href="{{ route('housekeeping-reports.issues') }}" style="color: #667eea; text-decoration: none; font-size: 14px;">View All Issues →</a>
+    </div>
+    
+    @if(isset($unresolvedIssues) && $unresolvedIssues->count() > 0)
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            @foreach($unresolvedIssues as $issue)
+                <div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                <span style="font-size: 18px;">⚠️</span>
+                                <div>
+                                    <div style="font-weight: 600; color: #333; font-size: 15px;">
+                                        @if($issue->room)
+                                            Room {{ $issue->room->room_number }}
+                                        @elseif($issue->area)
+                                            {{ $issue->area->name }}
+                                        @else
+                                            Unknown Location
+                                        @endif
+                                    </div>
+                                    @if(isset($issue->hotel) && $issue->hotel)
+                                        <div style="font-size: 12px; color: #666; margin-top: 2px;">
+                                            {{ $issue->hotel->name }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            <div style="font-size: 13px; color: #856404; margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px;">
+                                <strong>Issue:</strong> {{ \Illuminate\Support\Str::limit($issue->issues_found, 150) }}
+                            </div>
+                            @if($issue->assignedTo)
+                                <div style="font-size: 12px; color: #666; margin-top: 6px;">
+                                    Assigned to: <strong>{{ $issue->assignedTo->name }}</strong>
+                                </div>
+                            @endif
+                            <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                                Found: {{ $issue->created_at->format('M d, Y h:i A') }}
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                            <a href="{{ route('housekeeping-records.show', $issue) }}" 
+                               style="padding: 6px 12px; background: #667eea; color: white; border-radius: 4px; text-decoration: none; font-size: 12px; white-space: nowrap;">
+                                View Details
+                            </a>
+                            @if(auth()->user()->hasPermission('housekeeping_records.resolve', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                <a href="{{ route('housekeeping-records.show', $issue) }}#resolve" 
+                                   style="padding: 6px 12px; background: #28a745; color: white; border-radius: 4px; text-decoration: none; font-size: 12px; white-space: nowrap;">
+                                    Resolve
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+        @if(isset($unresolvedIssuesCount) && $unresolvedIssuesCount > $unresolvedIssues->count())
+            <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                <a href="{{ route('housekeeping-reports.issues', ['resolution_status' => 'unresolved']) }}" 
+                   style="color: #667eea; text-decoration: none; font-size: 14px;">
+                    View all {{ $unresolvedIssuesCount }} unresolved issues →
+                </a>
+            </div>
+        @endif
+    @else
+        <div style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 48px; margin-bottom: 15px;">✓</div>
+            <p style="color: #28a745; font-size: 16px; font-weight: 500; margin-bottom: 5px;">No Unresolved Issues</p>
+            <p style="color: #999; font-size: 14px;">All housekeeping issues have been resolved.</p>
+        </div>
+    @endif
+</div>
+@endif
+
+@if(isset($canViewBookings) && $canViewBookings)
 <!-- Booking Calendar -->
 <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -529,7 +656,9 @@
         @endforeach
     </div>
 </div>
+@endif
 
+@if(isset($canViewRooms) && $canViewRooms && isset($canViewBookings) && $canViewBookings)
 <!-- Upcoming Available Rooms -->
 <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -574,5 +703,6 @@
         <p style="color: #999; text-align: center; padding: 20px;">No upcoming available rooms</p>
     @endif
 </div>
+@endif
 @endif
 @endsection

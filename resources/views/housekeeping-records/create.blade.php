@@ -28,6 +28,23 @@
     <form method="POST" action="{{ route('housekeeping-records.store') }}">
         @csrf
 
+        @if(isset($isSuperAdmin) && $isSuperAdmin && isset($hotels) && $hotels->count() > 0)
+        <div class="form-group">
+            <label for="hotel_id">Hotel *</label>
+            <select id="hotel_id" name="hotel_id" required onchange="window.location.href = '{{ route('housekeeping-records.create') }}?hotel_id=' + this.value;">
+                <option value="">-- Select Hotel --</option>
+                @foreach($hotels as $h)
+                    <option value="{{ $h->id }}" {{ (isset($hotelId) && $hotelId == $h->id) ? 'selected' : '' }}>
+                        {{ $h->name }}
+                    </option>
+                @endforeach
+            </select>
+            <small style="color: #666; margin-top: 5px; display: block;">Select a hotel to view its rooms and areas.</small>
+        </div>
+        @elseif(isset($isSuperAdmin) && $isSuperAdmin)
+            <input type="hidden" name="hotel_id" value="{{ $hotelId }}">
+        @endif
+
         <div class="grid-2">
             <div class="form-group">
                 <label for="room_id">Room (Optional)</label>
@@ -82,7 +99,9 @@
                     <option value="dirty" {{ old('cleaning_status', 'dirty') == 'dirty' ? 'selected' : '' }}>Dirty</option>
                     <option value="cleaning" {{ old('cleaning_status') == 'cleaning' ? 'selected' : '' }}>Cleaning</option>
                     <option value="clean" {{ old('cleaning_status') == 'clean' ? 'selected' : '' }}>Clean</option>
-                    <option value="inspected" {{ old('cleaning_status') == 'inspected' ? 'selected' : '' }}>Inspected</option>
+                    @if(auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                        <option value="inspected" {{ old('cleaning_status') == 'inspected' ? 'selected' : '' }}>Inspected</option>
+                    @endif
                 </select>
                 @error('cleaning_status')
                     <span class="error">{{ $message }}</span>

@@ -91,7 +91,7 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
     <h2 style="color: #333; font-size: 24px;">All Tasks</h2>
-    @if(auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin())
+    @if(auth()->user()->hasPermission('tasks.manage', session('hotel_id')) || auth()->user()->isSuperAdmin())
         <a href="{{ route('tasks.create') }}" class="btn btn-primary">Create Task</a>
     @endif
 </div>
@@ -253,14 +253,29 @@
                     </td>
                     <td>
                         <a href="{{ route('tasks.show', $task) }}" class="btn" style="background: #3498db; color: white; padding: 6px 12px; font-size: 12px;">View</a>
-                        @if(auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin())
+                        @if(auth()->user()->hasPermission('tasks.manage', session('hotel_id')) || auth()->user()->isSuperAdmin())
                             <a href="{{ route('tasks.edit', $task) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
                         @endif
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ (isset($isSuperAdmin) && $isSuperAdmin) ? '9' : '8' }}" style="text-align: center; color: #999; padding: 40px;">No tasks found</td>
+                    <td colspan="{{ (isset($isSuperAdmin) && $isSuperAdmin) ? '9' : '8' }}" style="text-align: center; padding: 40px;">
+                        <div style="color: #999; margin-bottom: 20px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">📋</div>
+                            <div style="font-size: 18px; font-weight: 500; color: #666; margin-bottom: 10px;">No tasks found</div>
+                            <div style="font-size: 14px; color: #999; margin-bottom: 20px;">
+                                @if(isset($isSuperAdmin) && $isSuperAdmin && !isset($selectedHotelId))
+                                    No tasks have been created yet. Select a hotel or create a new task to get started.
+                                @else
+                                    No tasks have been created yet. Create your first task to get started.
+                                @endif
+                            </div>
+                            @if(auth()->user()->hasPermission('tasks.manage', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                <a href="{{ route('tasks.create') }}" class="btn btn-primary" style="margin-top: 10px;">Create Your First Task</a>
+                            @endif
+                        </div>
+                    </td>
                 </tr>
             @endforelse
         </tbody>

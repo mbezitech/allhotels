@@ -57,23 +57,32 @@ Route::middleware('auth')->group(function () {
 
 // Protected routes (require authentication and hotel context)
 Route::middleware(['auth', 'hotel.context'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::middleware('permission:dashboard.view')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    });
     
     // Role Management
     Route::middleware('permission:roles.view')->group(function () {
         Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
-        Route::get('/roles/{role}', [RoleController::class, 'show'])->name('roles.show');
     });
     
+    // Create route must come before {role} route to avoid route conflict
     Route::middleware('permission:roles.manage')->group(function () {
         Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
         Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
-        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+    });
+    
+    Route::middleware('permission:roles.view')->group(function () {
+        Route::get('/roles/{role}', [RoleController::class, 'show'])->name('roles.show');
     });
     
     Route::middleware('permission:roles.edit')->group(function () {
         Route::get('/roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
         Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    });
+    
+    Route::middleware('permission:roles.manage')->group(function () {
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     });
     
     // User Role Assignment (requires roles.manage permission)
@@ -112,18 +121,25 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Room Types Management
     Route::middleware('permission:room_types.view')->group(function () {
         Route::get('/room-types', [\App\Http\Controllers\RoomTypeController::class, 'index'])->name('room-types.index');
-        Route::get('/room-types/{roomType}', [\App\Http\Controllers\RoomTypeController::class, 'show'])->name('room-types.show');
     });
     
+    // Create route must come before {roomType} route to avoid route conflict
     Route::middleware('permission:room_types.manage')->group(function () {
         Route::get('/room-types/create', [\App\Http\Controllers\RoomTypeController::class, 'create'])->name('room-types.create');
         Route::post('/room-types', [\App\Http\Controllers\RoomTypeController::class, 'store'])->name('room-types.store');
-        Route::delete('/room-types/{roomType}', [\App\Http\Controllers\RoomTypeController::class, 'destroy'])->name('room-types.destroy');
+    });
+    
+    Route::middleware('permission:room_types.view')->group(function () {
+        Route::get('/room-types/{roomType}', [\App\Http\Controllers\RoomTypeController::class, 'show'])->name('room-types.show');
     });
     
     Route::middleware('permission:room_types.edit')->group(function () {
         Route::get('/room-types/{roomType}/edit', [\App\Http\Controllers\RoomTypeController::class, 'edit'])->name('room-types.edit');
         Route::put('/room-types/{roomType}', [\App\Http\Controllers\RoomTypeController::class, 'update'])->name('room-types.update');
+    });
+    
+    Route::middleware('permission:room_types.manage')->group(function () {
+        Route::delete('/room-types/{roomType}', [\App\Http\Controllers\RoomTypeController::class, 'destroy'])->name('room-types.destroy');
     });
     
     // Bookings Management
@@ -155,17 +171,32 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Housekeeping Records Management
     Route::middleware('permission:housekeeping_records.view')->group(function () {
         Route::get('/housekeeping-records', [HousekeepingRecordController::class, 'index'])->name('housekeeping-records.index');
+    });
+    
+    // Create route must come before {housekeepingRecord} route to avoid route conflict
+    Route::middleware('permission:housekeeping_records.manage')->group(function () {
+        Route::get('/housekeeping-records/create', [HousekeepingRecordController::class, 'create'])->name('housekeeping-records.create');
+        Route::post('/housekeeping-records', [HousekeepingRecordController::class, 'store'])->name('housekeeping-records.store');
+    });
+    
+    Route::middleware('permission:housekeeping_records.view')->group(function () {
         Route::get('/housekeeping-records/{housekeepingRecord}', [HousekeepingRecordController::class, 'show'])->name('housekeeping-records.show');
     });
     
     Route::middleware('permission:housekeeping_records.manage')->group(function () {
-        Route::get('/housekeeping-records/create', [HousekeepingRecordController::class, 'create'])->name('housekeeping-records.create');
-        Route::post('/housekeeping-records', [HousekeepingRecordController::class, 'store'])->name('housekeeping-records.store');
         Route::post('/housekeeping-records/{housekeepingRecord}/start', [HousekeepingRecordController::class, 'startCleaning'])->name('housekeeping-records.start');
         Route::post('/housekeeping-records/{housekeepingRecord}/complete', [HousekeepingRecordController::class, 'completeCleaning'])->name('housekeeping-records.complete');
-        Route::post('/housekeeping-records/{housekeepingRecord}/inspect', [HousekeepingRecordController::class, 'inspectCleaning'])->name('housekeeping-records.inspect');
-        Route::post('/housekeeping-records/{housekeepingRecord}/resolve', [HousekeepingRecordController::class, 'resolveIssue'])->name('housekeeping-records.resolve');
         Route::delete('/housekeeping-records/{housekeepingRecord}', [HousekeepingRecordController::class, 'destroy'])->name('housekeeping-records.destroy');
+    });
+    
+    // Resolve issues requires specific permission
+    Route::middleware('permission:housekeeping_records.resolve')->group(function () {
+        Route::post('/housekeeping-records/{housekeepingRecord}/resolve', [HousekeepingRecordController::class, 'resolveIssue'])->name('housekeeping-records.resolve');
+    });
+    
+    // Inspect requires specific permission
+    Route::middleware('permission:housekeeping_records.inspect')->group(function () {
+        Route::post('/housekeeping-records/{housekeepingRecord}/inspect', [HousekeepingRecordController::class, 'inspectCleaning'])->name('housekeeping-records.inspect');
     });
     
     Route::middleware('permission:housekeeping_records.edit')->group(function () {

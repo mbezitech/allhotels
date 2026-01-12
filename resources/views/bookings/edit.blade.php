@@ -91,6 +91,56 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             toggleCancellationReason();
+            
+            // Guest capacity validation
+            const roomSelect = document.getElementById('room_id');
+            const adultsInput = document.getElementById('adults');
+            const childrenInput = document.getElementById('children');
+            const capacityInfo = document.getElementById('capacity-info');
+            const guestWarning = document.getElementById('guest-warning');
+            const submitBtn = document.querySelector('button[type="submit"]');
+            
+            function updateCapacityInfo() {
+                const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+                if (selectedOption.value) {
+                    const capacity = parseInt(selectedOption.getAttribute('data-capacity'));
+                    capacityInfo.textContent = `Room capacity: ${capacity} guests`;
+                    capacityInfo.style.display = 'block';
+                } else {
+                    capacityInfo.style.display = 'none';
+                }
+                validateGuests();
+            }
+            
+            function validateGuests() {
+                const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+                if (!selectedOption.value) {
+                    guestWarning.style.display = 'none';
+                    if (submitBtn) submitBtn.disabled = false;
+                    return;
+                }
+                
+                const capacity = parseInt(selectedOption.getAttribute('data-capacity'));
+                const adults = parseInt(adultsInput.value) || 0;
+                const children = parseInt(childrenInput.value) || 0;
+                const totalGuests = adults + children;
+                
+                if (totalGuests > capacity) {
+                    guestWarning.style.display = 'block';
+                    guestWarning.innerHTML = `<strong>Warning:</strong> Total guests (${totalGuests}) exceed room capacity of ${capacity}!`;
+                    if (submitBtn) submitBtn.disabled = true;
+                } else {
+                    guestWarning.style.display = 'none';
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            }
+            
+            roomSelect.addEventListener('change', updateCapacityInfo);
+            adultsInput.addEventListener('input', validateGuests);
+            childrenInput.addEventListener('input', validateGuests);
+            
+            // Initialize on page load
+            updateCapacityInfo();
         });
     </script>
 </head>
@@ -110,11 +160,14 @@
                     <select id="room_id" name="room_id" required>
                         <option value="">-- Select Room --</option>
                         @foreach($rooms as $room)
-                            <option value="{{ $room->id }}" {{ old('room_id', $booking->room_id) == $room->id ? 'selected' : '' }}>
-                                {{ $room->room_number }} - {{ $room->room_type }}
+                            <option value="{{ $room->id }}" 
+                                    data-capacity="{{ $room->capacity }}"
+                                    {{ old('room_id', $booking->room_id) == $room->id ? 'selected' : '' }}>
+                                {{ $room->room_number }} - {{ $room->roomType->name ?? 'N/A' }} (Capacity: {{ $room->capacity }})
                             </option>
                         @endforeach
                     </select>
+                    <small id="capacity-info" style="color: #666; margin-top: 5px; display: block;"></small>
                     @error('room_id')
                         <span class="error">{{ $message }}</span>
                     @enderror
@@ -152,13 +205,22 @@
                 <div class="grid-2">
                     <div class="form-group">
                         <label for="adults">Adults *</label>
-                        <input type="number" id="adults" name="adults" value="{{ old('adults', $booking->adults) }}" required min="1">
+                        <input type="number" id="adults" name="adults" value="{{ old('adults', $booking->adults) }}" required min="1" max="100">
+                        @error('adults')
+                            <span class="error">{{ $message }}</span>
+                        @enderror
                     </div>
 
                     <div class="form-group">
                         <label for="children">Children</label>
-                        <input type="number" id="children" name="children" value="{{ old('children', $booking->children) }}" min="0">
+                        <input type="number" id="children" name="children" value="{{ old('children', $booking->children ?? 0) }}" min="0" max="100">
+                        @error('children')
+                            <span class="error">{{ $message }}</span>
+                        @enderror
                     </div>
+                </div>
+                <div id="guest-warning" style="display: none; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; margin-bottom: 20px; color: #856404;">
+                    <strong>Warning:</strong> Total guests exceed room capacity!
                 </div>
 
                 <div class="form-group">

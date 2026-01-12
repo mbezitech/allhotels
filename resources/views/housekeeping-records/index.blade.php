@@ -174,7 +174,7 @@
                                 <button type="submit" class="btn btn-success" style="padding: 6px 12px; font-size: 12px;">Complete</button>
                             </form>
                         @endif
-                        @if($record->cleaning_status == 'clean')
+                        @if($record->cleaning_status == 'clean' && (auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->user()->isSuperAdmin()))
                             <form action="{{ route('housekeeping-records.inspect', $record) }}" method="POST" style="display: inline;">
                                 @csrf
                                 <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Inspect</button>
