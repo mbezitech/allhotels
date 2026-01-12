@@ -311,16 +311,16 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
         Route::put('/extras/{extra}', [ExtraController::class, 'update'])->name('extras.update');
     });
     
+    // POS Sales - Create route must come before parameterized routes to avoid route conflict
+    Route::middleware('permission:pos.sell')->group(function () {
+        Route::get('/pos-sales/create', [PosSaleController::class, 'create'])->name('pos-sales.create');
+        Route::post('/pos-sales', [PosSaleController::class, 'store'])->name('pos-sales.store');
+    });
+    
     // POS Sales Management
     Route::middleware('permission:pos.view')->group(function () {
         Route::get('/pos-sales', [PosSaleController::class, 'index'])->name('pos-sales.index');
         Route::get('/pos-sales/{posSale}', [PosSaleController::class, 'show'])->name('pos-sales.show');
-    });
-    
-    // POS Sales create must come before pos-sales/{posSale} to avoid route conflict
-    Route::middleware('permission:pos.sell')->group(function () {
-        Route::get('/pos-sales/create', [PosSaleController::class, 'create'])->name('pos-sales.create');
-        Route::post('/pos-sales', [PosSaleController::class, 'store'])->name('pos-sales.store');
     });
     
     // POS Sales edit/update/delete (permissions available for future implementation)
