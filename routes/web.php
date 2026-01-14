@@ -307,20 +307,26 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Extras Management
     Route::middleware('permission:extras.view')->group(function () {
         Route::get('/extras', [ExtraController::class, 'index'])->name('extras.index');
-        Route::get('/extras/{extra}', [ExtraController::class, 'show'])->name('extras.show');
     });
     
     // Extras create must come before extras/{extra} to avoid route conflict
     Route::middleware('permission:extras.manage')->group(function () {
         Route::get('/extras/create', [ExtraController::class, 'create'])->name('extras.create');
         Route::post('/extras', [ExtraController::class, 'store'])->name('extras.store');
-        Route::delete('/extras/{extra}', [ExtraController::class, 'destroy'])->name('extras.destroy');
+    });
+    
+    Route::middleware('permission:extras.view')->group(function () {
+        Route::get('/extras/{extra}', [ExtraController::class, 'show'])->name('extras.show');
     });
     
     // Extras edit/update (requires extras.edit permission)
     Route::middleware('permission:extras.edit')->group(function () {
         Route::get('/extras/{extra}/edit', [ExtraController::class, 'edit'])->name('extras.edit');
         Route::put('/extras/{extra}', [ExtraController::class, 'update'])->name('extras.update');
+    });
+    
+    Route::middleware('permission:extras.manage')->group(function () {
+        Route::delete('/extras/{extra}', [ExtraController::class, 'destroy'])->name('extras.destroy');
     });
     
     // POS Sales - Create route must come before parameterized routes to avoid route conflict
