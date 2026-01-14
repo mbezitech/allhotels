@@ -223,18 +223,24 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Hotel Areas Management
     Route::middleware('permission:hotel_areas.view')->group(function () {
         Route::get('/hotel-areas', [HotelAreaController::class, 'index'])->name('hotel-areas.index');
-        Route::get('/hotel-areas/{hotelArea}', [HotelAreaController::class, 'show'])->name('hotel-areas.show');
     });
     
     Route::middleware('permission:hotel_areas.manage')->group(function () {
         Route::get('/hotel-areas/create', [HotelAreaController::class, 'create'])->name('hotel-areas.create');
         Route::post('/hotel-areas', [HotelAreaController::class, 'store'])->name('hotel-areas.store');
-        Route::delete('/hotel-areas/{hotelArea}', [HotelAreaController::class, 'destroy'])->name('hotel-areas.destroy');
+    });
+    
+    Route::middleware('permission:hotel_areas.view')->group(function () {
+        Route::get('/hotel-areas/{hotelArea}', [HotelAreaController::class, 'show'])->name('hotel-areas.show');
     });
     
     Route::middleware('permission:hotel_areas.edit')->group(function () {
         Route::get('/hotel-areas/{hotelArea}/edit', [HotelAreaController::class, 'edit'])->name('hotel-areas.edit');
         Route::put('/hotel-areas/{hotelArea}', [HotelAreaController::class, 'update'])->name('hotel-areas.update');
+    });
+    
+    Route::middleware('permission:hotel_areas.manage')->group(function () {
+        Route::delete('/hotel-areas/{hotelArea}', [HotelAreaController::class, 'destroy'])->name('hotel-areas.destroy');
     });
 
     // Housekeeping Reports
