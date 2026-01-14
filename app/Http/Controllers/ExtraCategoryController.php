@@ -52,6 +52,15 @@ class ExtraCategoryController extends Controller
      */
     public function create()
     {
+        $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // Non-super admins must have a hotel context
+        if (!$isSuperAdmin && !$hotelId) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Please select a hotel to create extra categories.');
+        }
+        
         return view('extra-categories.create');
     }
 
@@ -61,6 +70,14 @@ class ExtraCategoryController extends Controller
     public function store(Request $request)
     {
         $hotelId = session('hotel_id');
+        $isSuperAdmin = auth()->user()->isSuperAdmin();
+        
+        // Non-super admins must have a hotel context
+        if (!$isSuperAdmin && !$hotelId) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Please select a hotel to create extra categories.');
+        }
+        
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('extra_categories')->where(fn ($query) => $query->where('hotel_id', $hotelId))],
             'description' => 'nullable|string',
@@ -74,7 +91,13 @@ class ExtraCategoryController extends Controller
 
         logActivity('created', $category, "Created extra category: {$category->name}");
 
-        return redirect()->route('extra-categories.index')
+        // Preserve hotel filter for super admins if it was set
+        $redirectParams = [];
+        if ($isSuperAdmin && $hotelId) {
+            $redirectParams['hotel_id'] = $hotelId;
+        }
+        
+        return redirect()->route('extra-categories.index', $redirectParams)
             ->with('success', 'Category created successfully.');
     }
 
