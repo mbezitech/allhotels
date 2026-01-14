@@ -284,18 +284,24 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Extra Categories Management
     Route::middleware('permission:extra_categories.view')->group(function () {
         Route::get('/extra-categories', [\App\Http\Controllers\ExtraCategoryController::class, 'index'])->name('extra-categories.index');
-        Route::get('/extra-categories/{extraCategory}', [\App\Http\Controllers\ExtraCategoryController::class, 'show'])->name('extra-categories.show');
     });
     
     Route::middleware('permission:extra_categories.manage')->group(function () {
         Route::get('/extra-categories/create', [\App\Http\Controllers\ExtraCategoryController::class, 'create'])->name('extra-categories.create');
         Route::post('/extra-categories', [\App\Http\Controllers\ExtraCategoryController::class, 'store'])->name('extra-categories.store');
-        Route::delete('/extra-categories/{extraCategory}', [\App\Http\Controllers\ExtraCategoryController::class, 'destroy'])->name('extra-categories.destroy');
+    });
+    
+    Route::middleware('permission:extra_categories.view')->group(function () {
+        Route::get('/extra-categories/{extraCategory}', [\App\Http\Controllers\ExtraCategoryController::class, 'show'])->name('extra-categories.show');
     });
     
     Route::middleware('permission:extra_categories.edit')->group(function () {
         Route::get('/extra-categories/{extraCategory}/edit', [\App\Http\Controllers\ExtraCategoryController::class, 'edit'])->name('extra-categories.edit');
         Route::put('/extra-categories/{extraCategory}', [\App\Http\Controllers\ExtraCategoryController::class, 'update'])->name('extra-categories.update');
+    });
+    
+    Route::middleware('permission:extra_categories.manage')->group(function () {
+        Route::delete('/extra-categories/{extraCategory}', [\App\Http\Controllers\ExtraCategoryController::class, 'destroy'])->name('extra-categories.destroy');
     });
     
     // Extras Management
