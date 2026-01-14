@@ -260,7 +260,6 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Tasks Management (Housekeeping & Maintenance)
     Route::middleware('permission:tasks.view')->group(function () {
         Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
-        Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
     });
     
     // Tasks create must come before tasks/{task} to avoid route conflict
@@ -270,15 +269,19 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
     });
     
-    // Tasks delete (requires tasks.manage permission)
-    Route::middleware('permission:tasks.manage')->group(function () {
-        Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+    Route::middleware('permission:tasks.view')->group(function () {
+        Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
     });
     
     // Tasks edit/update (requires tasks.edit permission)
     Route::middleware('permission:tasks.edit')->group(function () {
         Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('tasks.edit');
         Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    });
+    
+    // Tasks delete (requires tasks.manage permission)
+    Route::middleware('permission:tasks.manage')->group(function () {
+        Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
     });
     
     // Extra Categories Management
