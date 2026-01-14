@@ -78,14 +78,18 @@ class ExtraCategoryController extends Controller
                 ->with('error', 'Please select a hotel to create extra categories.');
         }
         
+        // Normalize checkbox value before validation
+        $request->merge([
+            'is_active' => $request->has('is_active') ? true : false,
+        ]);
+        
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('extra_categories')->where(fn ($query) => $query->where('hotel_id', $hotelId))],
             'description' => 'nullable|string',
-            'is_active' => 'boolean',
+            'is_active' => 'required|boolean',
         ]);
 
         $validated['hotel_id'] = $hotelId;
-        $validated['is_active'] = $request->has('is_active');
         
         $category = ExtraCategory::create($validated);
 

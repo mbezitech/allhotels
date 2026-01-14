@@ -59,7 +59,18 @@
 
 @section('content')
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <form method="POST" action="{{ route('extra-categories.store') }}">
+    @if($errors->any())
+        <div style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+            <strong>Please fix the following errors:</strong>
+            <ul style="margin: 10px 0 0 20px;">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <form method="POST" action="{{ route('extra-categories.store') }}" id="createCategoryForm">
         @csrf
 
         <div class="form-group">
@@ -73,13 +84,19 @@
         <div class="form-group">
             <label for="description">Description</label>
             <textarea id="description" name="description" rows="3">{{ old('description') }}</textarea>
+            @error('description')
+                <span class="error">{{ $message }}</span>
+            @enderror
         </div>
 
         <div class="form-group">
             <div class="checkbox-group">
-                <input type="checkbox" id="is_active" name="is_active" {{ old('is_active', true) ? 'checked' : '' }}>
+                <input type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }}>
                 <label for="is_active" style="margin: 0; font-weight: normal;">Active</label>
             </div>
+            @error('is_active')
+                <span class="error">{{ $message }}</span>
+            @enderror
         </div>
 
         <div style="margin-top: 30px;">
@@ -88,5 +105,18 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+    document.getElementById('createCategoryForm').addEventListener('submit', function(e) {
+        // Ensure checkbox value is set
+        const checkbox = document.getElementById('is_active');
+        if (!checkbox.checked) {
+            // Remove the checkbox from form if unchecked (so it doesn't send value)
+            checkbox.removeAttribute('name');
+        }
+    });
+</script>
+@endpush
 @endsection
 
