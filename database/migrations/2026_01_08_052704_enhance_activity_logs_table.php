@@ -12,13 +12,49 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Check if the table exists
+        if (!Schema::hasTable('activity_logs')) {
+            return;
+        }
+
         Schema::table('activity_logs', function (Blueprint $table) {
-            // Make user_id nullable for system actions
-            $table->foreignId('user_id')->nullable()->change();
+            // Make user_id nullable for system actions (only if it's not already nullable)
+            try {
+                if (Schema::hasColumn('activity_logs', 'user_id')) {
+                    // Check if user_id is already nullable by querying the column definition
+                    $columnInfo = DB::select("
+                        SELECT IS_NULLABLE 
+                        FROM information_schema.COLUMNS 
+                        WHERE TABLE_SCHEMA = DATABASE() 
+                        AND TABLE_NAME = 'activity_logs' 
+                        AND COLUMN_NAME = 'user_id'
+                    ");
+                    
+                    if (isset($columnInfo[0]) && $columnInfo[0]->IS_NULLABLE === 'NO') {
+                        $table->foreignId('user_id')->nullable()->change();
+                    }
+                }
+            } catch (\Exception $e) {
+                // If we can't check or change, continue
+            }
             
-            // Add old_values and new_values columns
-            $table->json('old_values')->nullable()->after('properties');
-            $table->json('new_values')->nullable()->after('old_values');
+            // Add old_values column if it doesn't exist
+            if (!Schema::hasColumn('activity_logs', 'old_values')) {
+                try {
+                    $table->json('old_values')->nullable()->after('properties');
+                } catch (\Exception $e) {
+                    // Column might have been added already
+                }
+            }
+            
+            // Add new_values column if it doesn't exist
+            if (!Schema::hasColumn('activity_logs', 'new_values')) {
+                try {
+                    $table->json('new_values')->nullable()->after('old_values');
+                } catch (\Exception $e) {
+                    // Column might have been added already
+                }
+            }
             
             // Add subject_type and subject_id for better tracking (alias for model_type/model_id but clearer naming)
             // We'll keep model_type/model_id for backward compatibility
@@ -30,14 +66,43 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('activity_logs')) {
+            return;
+        }
+
         Schema::table('activity_logs', function (Blueprint $table) {
-            // Note: Making user_id non-nullable again might fail if there are system logs
-            // So we'll just drop the new columns
-            $table->dropColumn(['old_values', 'new_values']);
+            // Drop columns only if they exist
+            $columnsToDrop = [];
+            if (Schema::hasColumn('activity_logs', 'old_values')) {
+                $columnsToDrop[] = 'old_values';
+            }
+            if (Schema::hasColumn('activity_logs', 'new_values')) {
+                $columnsToDrop[] = 'new_values';
+            }
             
-            // Revert user_id to non-nullable (this might fail if system logs exist)
+            if (!empty($columnsToDrop)) {
+                try {
+                    $table->dropColumn($columnsToDrop);
+                } catch (\Exception $e) {
+                    // Columns might have been dropped already
+                }
+            }
+            
+            // Revert user_id to non-nullable (this might fail if there are system logs)
             try {
-                $table->foreignId('user_id')->nullable(false)->change();
+                if (Schema::hasColumn('activity_logs', 'user_id')) {
+                    $columnInfo = DB::select("
+                        SELECT IS_NULLABLE 
+                        FROM information_schema.COLUMNS 
+                        WHERE TABLE_SCHEMA = DATABASE() 
+                        AND TABLE_NAME = 'activity_logs' 
+                        AND COLUMN_NAME = 'user_id'
+                    ");
+                    
+                    if (isset($columnInfo[0]) && $columnInfo[0]->IS_NULLABLE === 'YES') {
+                        $table->foreignId('user_id')->nullable(false)->change();
+                    }
+                }
             } catch (\Exception $e) {
                 // If there are null values, we can't revert
             }
