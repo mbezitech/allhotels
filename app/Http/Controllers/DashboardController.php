@@ -50,8 +50,22 @@ class DashboardController extends Controller
             $pendingBookings = Booking::where('status', 'pending')->count();
             $cancelledBookings = Booking::where('status', 'cancelled')->count();
             $confirmedBookings = Booking::where('status', 'confirmed')->count();
+            // Count bookings scheduled to check in today
             $todayCheckIns = Booking::whereDate('check_in', $today)->count();
-            $todayCheckOuts = Booking::whereDate('check_out', $today)->count();
+            
+            // Count bookings that were actually checked out today (status = checked_out and updated today)
+            // OR bookings scheduled to check out today that haven't been checked out yet
+            $todayCheckOuts = Booking::where(function($query) use ($today) {
+                $query->where(function($q) use ($today) {
+                    // Bookings actually checked out today
+                    $q->where('status', 'checked_out')
+                      ->whereDate('updated_at', $today);
+                })->orWhere(function($q) use ($today) {
+                    // Bookings scheduled to check out today but not yet checked out
+                    $q->whereDate('check_out', $today)
+                      ->whereIn('status', ['confirmed', 'checked_in']);
+                });
+            })->count();
             
             // Sales statistics
             $todaySales = PosSale::whereDate('sale_date', $today)->sum('final_amount');
@@ -203,11 +217,25 @@ class DashboardController extends Controller
         $todayCheckIns = 0;
         $todayCheckOuts = 0;
         if ($canViewBookings) {
+            // Count bookings scheduled to check in today
             $todayCheckIns = Booking::where('hotel_id', $hotelId)
                 ->whereDate('check_in', $today)
                 ->count();
+            
+            // Count bookings that were actually checked out today (status = checked_out and updated today)
+            // OR bookings scheduled to check out today that haven't been checked out yet
             $todayCheckOuts = Booking::where('hotel_id', $hotelId)
-                ->whereDate('check_out', $today)
+                ->where(function($query) use ($today) {
+                    $query->where(function($q) use ($today) {
+                        // Bookings actually checked out today
+                        $q->where('status', 'checked_out')
+                          ->whereDate('updated_at', $today);
+                    })->orWhere(function($q) use ($today) {
+                        // Bookings scheduled to check out today but not yet checked out
+                        $q->whereDate('check_out', $today)
+                          ->whereIn('status', ['confirmed', 'checked_in']);
+                    });
+                })
                 ->count();
         }
 

@@ -116,7 +116,18 @@
 
     <div class="info-row">
         <span class="info-label">Hotel:</span>
-        <span class="info-value">{{ $activityLog->hotel->name ?? 'Unknown' }}</span>
+        <span class="info-value">
+            @if(is_null($activityLog->hotel_id))
+                <span class="badge" style="background: #dc3545; color: white;">Deleted Hotel (Log Preserved)</span>
+                @if($activityLog->properties && isset($activityLog->properties['name']))
+                    <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                        Hotel Name: {{ $activityLog->properties['name'] }}
+                    </div>
+                @endif
+            @else
+                {{ $activityLog->hotel->name ?? 'Unknown' }}
+            @endif
+        </span>
     </div>
 
     <div class="info-row">

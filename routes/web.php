@@ -45,6 +45,8 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 // Access control is handled in HotelController constructor
 Route::middleware('auth')->group(function () {
     Route::resource('hotels', HotelController::class);
+    Route::post('/hotels/{id}/restore', [HotelController::class, 'restore'])->name('hotels.restore');
+    Route::delete('/hotels/{id}/force-delete', [HotelController::class, 'forceDelete'])->name('hotels.force-delete');
     Route::post('/hotels/switch', [HotelController::class, 'switchHotel'])->name('hotels.switch');
     Route::post('/hotels/{hotel}/switch', [HotelController::class, 'switchHotel'])->name('hotels.switch.hotel');
     

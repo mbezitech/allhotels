@@ -30,9 +30,20 @@ if (!function_exists('logActivity')) {
         $hotelId = session('hotel_id');
         $userId = $isSystemLog ? null : Auth::id();
 
-        // For system logs, we still need hotel_id from the model if available
+        // Special handling for Hotel model - use the hotel's own ID
+        // This is needed because hotels don't have a hotel_id field (they ARE the hotel)
+        if ($model instanceof \App\Models\Hotel) {
+            $hotelId = $model->id;
+        }
+
+        // For system logs or when no session hotel_id, try to get from model
         if (!$hotelId && $model && method_exists($model, 'getAttribute')) {
             $hotelId = $model->getAttribute('hotel_id') ?? $model->hotel_id ?? null;
+        }
+
+        // If still no hotel_id, try to get from properties if provided
+        if (!$hotelId && $properties && isset($properties['hotel_id'])) {
+            $hotelId = $properties['hotel_id'];
         }
 
         if (!$hotelId) {

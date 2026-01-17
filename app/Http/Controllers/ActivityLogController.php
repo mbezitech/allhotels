@@ -23,15 +23,23 @@ class ActivityLogController extends Controller
         
         $selectedHotelId = $request->get('hotel_id', $hotelId);
         
-        // If super admin and no hotel selected, show all
+        // If super admin and no hotel selected, show all (including logs with null hotel_id for deleted hotels)
         if ($isSuperAdmin && !$selectedHotelId) {
-            $query = ActivityLog::query();
+            $query = ActivityLog::query(); // Show all including deleted hotels (null hotel_id)
         } else {
             // Ensure user can only access their hotel unless super admin
             if (!$isSuperAdmin && $selectedHotelId != $hotelId) {
                 abort(403, 'Unauthorized access.');
             }
-            $query = ActivityLog::where('hotel_id', $selectedHotelId);
+            // Show logs for the selected hotel
+            if ($isSuperAdmin && $selectedHotelId === 'all') {
+                $query = ActivityLog::query(); // Show all including deleted hotels
+            } elseif ($isSuperAdmin && $selectedHotelId === 'deleted') {
+                // Special filter for deleted hotels (null hotel_id)
+                $query = ActivityLog::whereNull('hotel_id');
+            } else {
+                $query = ActivityLog::where('hotel_id', $selectedHotelId);
+            }
         }
 
         $query->with('user', 'hotel');
@@ -53,6 +61,8 @@ class ActivityLogController extends Controller
                 $query->where('model_type', 'App\Models\Task');
             } elseif ($request->model_type === 'HotelArea') {
                 $query->where('model_type', 'App\Models\HotelArea');
+            } elseif ($request->model_type === 'Hotel') {
+                $query->where('model_type', 'App\Models\Hotel');
             } else {
                 $query->where('model_type', $request->model_type);
             }
@@ -112,9 +122,17 @@ class ActivityLogController extends Controller
         $hotelId = session('hotel_id');
         $isSuperAdmin = auth()->user()->isSuperAdmin();
         
-        // Super admin can view any log, others only their hotel
-        if (!$isSuperAdmin && $activityLog->hotel_id != $hotelId) {
-            abort(403, 'Unauthorized access to this activity log.');
+        // Super admin can view any log (including deleted hotel logs with null hotel_id)
+        // Others can only view logs for their hotel
+        if (!$isSuperAdmin) {
+            // If log has null hotel_id (deleted hotel), only super admin can view
+            if (is_null($activityLog->hotel_id)) {
+                abort(403, 'Unauthorized access to this activity log.');
+            }
+            // Regular users can only view logs for their hotel
+            if ($activityLog->hotel_id != $hotelId) {
+                abort(403, 'Unauthorized access to this activity log.');
+            }
         }
         
         $activityLog->load('user', 'hotel');

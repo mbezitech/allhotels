@@ -98,6 +98,7 @@
                 <label>Hotel</label>
                 <select name="hotel_id" onchange="this.form.submit()">
                     <option value="">All Hotels</option>
+                    <option value="deleted" {{ $selectedHotelId === 'deleted' ? 'selected' : '' }}>Deleted Hotels (Preserved Logs)</option>
                     @foreach($hotels as $hotel)
                         <option value="{{ $hotel->id }}" {{ $selectedHotelId == $hotel->id ? 'selected' : '' }}>
                             {{ $hotel->name }}
@@ -221,6 +222,13 @@
                             @endif
                         @else
                             <span style="color: #999;">-</span>
+                        @endif
+                        @if(is_null($log->hotel_id))
+                            <span class="badge" style="background: #dc3545; color: white; margin-left: 5px; font-size: 10px;">Deleted Hotel</span>
+                        @elseif($log->hotel)
+                            <div style="margin-top: 4px; font-size: 11px; color: #666;">
+                                Hotel: {{ $log->hotel->name }}
+                            </div>
                         @endif
                     </td>
                     <td>{{ $log->description }}</td>
