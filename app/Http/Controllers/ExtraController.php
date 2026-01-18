@@ -18,8 +18,16 @@ class ExtraController extends Controller
         $hotelId = session('hotel_id');
         $isSuperAdmin = auth()->user()->isSuperAdmin();
         
+        // Check if showing deleted extras
+        $showDeleted = $request->has('show_deleted') && $request->show_deleted == '1';
+        
         // Super admins can see all extras, others only their hotel
         $query = Extra::query();
+        
+        if ($showDeleted) {
+            $query->withTrashed();
+        }
+        
         if (!$isSuperAdmin) {
             $query->where('hotel_id', $hotelId);
         }
@@ -56,7 +64,18 @@ class ExtraController extends Controller
             ? \App\Models\ExtraCategory::where('hotel_id', $request->hotel_id)->orderBy('name')->get()
             : ($hotelId ? \App\Models\ExtraCategory::where('hotel_id', $hotelId)->orderBy('name')->get() : collect());
 
-        return view('extras.index', compact('extras', 'hotels', 'categories', 'isSuperAdmin'));
+        // Count deleted extras
+        $deletedCount = 0;
+        $deletedQuery = Extra::onlyTrashed();
+        if (!$isSuperAdmin) {
+            $deletedQuery->where('hotel_id', $hotelId);
+        }
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $deletedQuery->where('hotel_id', $request->hotel_id);
+        }
+        $deletedCount = $deletedQuery->count();
+
+        return view('extras.index', compact('extras', 'hotels', 'categories', 'isSuperAdmin', 'showDeleted', 'deletedCount'));
     }
 
     /**
@@ -65,6 +84,13 @@ class ExtraController extends Controller
     public function create()
     {
         $hotelId = session('hotel_id');
+        
+        // Log access to product creation form
+        logActivity('create_form_accessed', null, "Accessed product creation form", [
+            'user_id' => auth()->id(),
+            'hotel_id' => $hotelId,
+        ]);
+        
         $categories = ExtraCategory::where('hotel_id', $hotelId)
             ->where('is_active', true)
             ->orderBy('name')
@@ -123,7 +149,15 @@ class ExtraController extends Controller
             $validated['images'] = $imagePaths;
         }
 
-        Extra::create($validated);
+        $extra = Extra::create($validated);
+
+        // Log product creation
+        logActivity('created', $extra, "Created product: {$extra->name} - $" . number_format($extra->price, 2), [
+            'product_id' => $extra->id,
+            'name' => $extra->name,
+            'price' => $extra->price,
+            'category' => $extra->category ? $extra->category->name : 'N/A',
+        ]);
 
         return redirect()->route('extras.index')
             ->with('success', 'Product created successfully.');
@@ -136,6 +170,13 @@ class ExtraController extends Controller
     {
         $this->authorizeHotel($extra);
         
+        // Log product viewing
+        logActivity('viewed', $extra, "Viewed product: {$extra->name}", [
+            'product_id' => $extra->id,
+            'name' => $extra->name,
+            'price' => $extra->price,
+        ]);
+        
         return view('extras.show', compact('extra'));
     }
 
@@ -145,6 +186,13 @@ class ExtraController extends Controller
     public function edit(Extra $extra)
     {
         $this->authorizeHotel($extra);
+        
+        // Log product edit form access
+        logActivity('edit_form_accessed', $extra, "Accessed edit form for product: {$extra->name}", [
+            'product_id' => $extra->id,
+            'name' => $extra->name,
+        ]);
+        
         $hotelId = session('hotel_id');
         $categories = ExtraCategory::where('hotel_id', $hotelId)
             ->where('is_active', true)
@@ -221,7 +269,41 @@ class ExtraController extends Controller
             $validated['images'] = $currentImages;
         }
 
+        // Capture old values for logging
+        $oldValues = [
+            'name' => $extra->name,
+            'price' => $extra->price,
+            'cost' => $extra->cost,
+            'is_active' => $extra->is_active,
+            'stock_tracked' => $extra->stock_tracked,
+        ];
+        
         $extra->update($validated);
+        
+        // Capture new values for logging
+        $extra->refresh();
+        $newValues = [
+            'name' => $extra->name,
+            'price' => $extra->price,
+            'cost' => $extra->cost,
+            'is_active' => $extra->is_active,
+            'stock_tracked' => $extra->stock_tracked,
+        ];
+        
+        // Log product update
+        $changedFields = [];
+        foreach ($oldValues as $key => $oldValue) {
+            if (isset($newValues[$key]) && $oldValue != $newValues[$key]) {
+                $changedFields[$key] = ['old' => $oldValue, 'new' => $newValues[$key]];
+            }
+        }
+        
+        if (!empty($changedFields)) {
+            $fieldNames = implode(', ', array_keys($changedFields));
+            logActivity('updated', $extra, "Updated product: {$extra->name} - Changed: {$fieldNames}", null, $oldValues, $newValues);
+        } else {
+            logActivity('updated', $extra, "Updated product: {$extra->name}");
+        }
 
         return redirect()->route('extras.index')
             ->with('success', 'Product updated successfully.');
@@ -242,10 +324,87 @@ class ExtraController extends Controller
                 ->with('error', 'Cannot delete extra that has been used in sales.');
         }
 
+        // Capture product details before deletion
+        $productDetails = [
+            'product_id' => $extra->id,
+            'name' => $extra->name,
+            'price' => $extra->price,
+            'category' => $extra->category ? $extra->category->name : 'N/A',
+            'is_active' => $extra->is_active,
+        ];
+        
+        // Soft delete the product
         $extra->delete();
+
+        // Log product deletion
+        logActivity('deleted', $extra, "Deleted product: {$productDetails['name']} - $" . number_format($productDetails['price'], 2), $productDetails);
 
         return redirect()->route('extras.index')
             ->with('success', 'Product deleted successfully.');
+    }
+
+    /**
+     * Restore a soft-deleted product
+     */
+    public function restore($id)
+    {
+        $extra = Extra::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($extra);
+
+        $extra->restore();
+
+        // Log the restoration
+        logActivity('restored', $extra, "Restored product: {$extra->name}", [
+            'product_id' => $extra->id,
+            'name' => $extra->name,
+        ]);
+
+        return redirect()->route('extras.index')
+            ->with('success', 'Product restored successfully.');
+    }
+
+    /**
+     * Permanently delete a product
+     */
+    public function forceDelete($id)
+    {
+        $extra = Extra::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($extra);
+
+        // Check if extra has been used in any sales
+        $hasSales = $extra->posSaleItems()->exists();
+
+        if ($hasSales) {
+            return redirect()->route('extras.index')
+                ->with('error', 'Cannot permanently delete product that has been used in sales.');
+        }
+
+        // Capture product details before permanent deletion
+        $productDetails = [
+            'product_id' => $extra->id,
+            'name' => $extra->name,
+            'price' => $extra->price,
+            'category' => $extra->category ? $extra->category->name : 'N/A',
+            'is_active' => $extra->is_active,
+        ];
+        
+        // Delete images if exist
+        if ($extra->images) {
+            foreach ($extra->images as $image) {
+                if (Storage::disk('public')->exists($image)) {
+                    Storage::disk('public')->delete($image);
+                }
+            }
+        }
+
+        // Permanently delete the product
+        $extra->forceDelete();
+
+        // Log the permanent deletion
+        logActivity('force_deleted', null, "Permanently deleted product: {$productDetails['name']} - $" . number_format($productDetails['price'], 2), $productDetails);
+
+        return redirect()->route('extras.index')
+            ->with('success', 'Product permanently deleted.');
     }
 
     /**

@@ -121,6 +121,19 @@
             </div>
             <small style="color: #666; display: block; margin-top: 5px;">Super admins have access to all hotels and can manage the system globally</small>
         </div>
+
+        <div class="form-group">
+            <label for="hotel_id">Assign as Owner of Hotel (Optional)</label>
+            <select id="hotel_id" name="hotel_id">
+                <option value="">-- Select Hotel (Optional) --</option>
+                @foreach(\App\Models\Hotel::all() as $hotel)
+                    <option value="{{ $hotel->id }}" {{ old('hotel_id') == $hotel->id ? 'selected' : '' }}>
+                        {{ $hotel->name }}
+                    </option>
+                @endforeach
+            </select>
+            <small style="color: #666; display: block; margin-top: 5px;">If selected, user will be assigned as owner and automatically get Admin role with all permissions for this hotel (except deleting admin roles and hotels)</small>
+        </div>
         @endif
 
         <div style="margin-top: 30px;">

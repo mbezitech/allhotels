@@ -46,11 +46,21 @@ class PublicBookingController extends Controller
             'guest_name' => 'required|string|max:255',
             'guest_email' => 'required|email|max:255',
             'guest_phone' => 'required|string|max:255',
+            'country_code' => 'nullable|string|max:10',
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'adults' => 'required|integer|min:1',
             'children' => 'nullable|integer|min:0',
         ]);
+        
+        // Combine country code with phone number if both are provided
+        if (!empty($validated['country_code']) && !empty($validated['guest_phone'])) {
+            $validated['guest_phone'] = $validated['country_code'] . ' ' . $validated['guest_phone'];
+        } elseif (!empty($validated['country_code']) && empty($validated['guest_phone'])) {
+            // If only country code is provided, don't save it
+            unset($validated['country_code']);
+        }
+        unset($validated['country_code']); // Remove from validated as it's not a database field
 
         // Check total guests don't exceed room capacity
         $totalGuests = $validated['adults'] + ($validated['children'] ?? 0);

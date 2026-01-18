@@ -76,8 +76,31 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">All Users</h2>
-    <a href="{{ route('users.create') }}" class="btn btn-primary">Add User</a>
+    <div>
+        @if(isset($deletedCount) && $deletedCount > 0 && !($showDeleted ?? false))
+            <a href="{{ route('users.index', ['show_deleted' => 1]) }}" 
+               class="btn" 
+               style="background: #ff9800; color: white; margin-right: 10px;">
+                View Deleted ({{ $deletedCount }})
+            </a>
+        @endif
+        @if($showDeleted ?? false)
+            <a href="{{ route('users.index') }}" 
+               class="btn" 
+               style="background: #95a5a6; color: white; margin-right: 10px;">
+                View Active Users
+            </a>
+        @endif
+        <a href="{{ route('users.create') }}" class="btn btn-primary">Add User</a>
+    </div>
 </div>
+
+@if($showDeleted ?? false)
+    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+        <strong style="color: #856404;">⚠️ Viewing Deleted Users</strong>
+        <p style="color: #856404; margin: 5px 0 0 0; font-size: 14px;">These users have been soft-deleted and can be restored or permanently deleted.</p>
+    </div>
+@endif
 
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
     <table>
@@ -94,7 +117,7 @@
         </thead>
         <tbody>
             @forelse($users as $user)
-                <tr>
+                <tr style="{{ ($showDeleted ?? false) && $user->trashed() ? 'opacity: 0.7; background-color: #f8f9fa;' : '' }}">
                     <td><strong>{{ $user->name }}</strong></td>
                     <td>{{ $user->email }}</td>
                     <td>
@@ -143,12 +166,28 @@
                                     </form>
                                 @endif
                             @endif
-                            @if($user->id !== auth()->id() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.manage')))
-                                <form action="{{ route('users.destroy', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this user?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Delete</button>
-                                </form>
+                            @if($showDeleted ?? false)
+                                {{-- Show restore and force delete for deleted users --}}
+                                @if($user->id !== auth()->id() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.manage')))
+                                    <form action="{{ route('users.restore', $user->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this user?')">
+                                        @csrf
+                                        <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
+                                    </form>
+                                    <form action="{{ route('users.forceDelete', $user->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('⚠️ WARNING: This will permanently delete this user. This action cannot be undone. Are you absolutely sure?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Permanently Delete</button>
+                                    </form>
+                                @endif
+                            @else
+                                {{-- Show regular delete for active users --}}
+                                @if($user->id !== auth()->id() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.manage')))
+                                    <form action="{{ route('users.destroy', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this user?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+                                    </form>
+                                @endif
                             @endif
                         </div>
                     </td>

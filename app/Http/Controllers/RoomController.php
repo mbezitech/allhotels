@@ -17,8 +17,16 @@ class RoomController extends Controller
         $hotelId = session('hotel_id');
         $isSuperAdmin = auth()->user()->isSuperAdmin();
         
+        // Check if showing deleted rooms
+        $showDeleted = $request->has('show_deleted') && $request->show_deleted == '1';
+        
         // Super admins can see all rooms, others only their hotel
         $query = Room::query();
+        
+        if ($showDeleted) {
+            $query->withTrashed();
+        }
+        
         if (!$isSuperAdmin) {
             $query->where('hotel_id', $hotelId);
         }
@@ -48,7 +56,18 @@ class RoomController extends Controller
         // Get all hotels for super admin filter
         $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
 
-        return view('rooms.index', compact('rooms', 'hotel', 'hotels', 'isSuperAdmin', 'selectedHotelId'));
+        // Count deleted rooms
+        $deletedCount = 0;
+        $deletedQuery = Room::onlyTrashed();
+        if (!$isSuperAdmin) {
+            $deletedQuery->where('hotel_id', $hotelId);
+        }
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $deletedQuery->where('hotel_id', $request->hotel_id);
+        }
+        $deletedCount = $deletedQuery->count();
+
+        return view('rooms.index', compact('rooms', 'hotel', 'hotels', 'isSuperAdmin', 'selectedHotelId', 'showDeleted', 'deletedCount'));
     }
 
     /**
@@ -57,6 +76,13 @@ class RoomController extends Controller
     public function create()
     {
         $hotelId = session('hotel_id');
+        
+        // Log access to room creation form
+        logActivity('create_form_accessed', null, "Accessed room creation form", [
+            'user_id' => auth()->id(),
+            'hotel_id' => $hotelId,
+        ]);
+        
         $roomTypes = \App\Models\RoomType::where('hotel_id', $hotelId)
             ->where('is_active', true)
             ->orderBy('name')
@@ -109,6 +135,14 @@ class RoomController extends Controller
     {
         $this->authorizeHotel($room);
         
+        // Log room viewing
+        logActivity('viewed', $room, "Viewed room: {$room->room_number}", [
+            'room_id' => $room->id,
+            'room_number' => $room->room_number,
+            'status' => $room->status,
+            'cleaning_status' => $room->cleaning_status,
+        ]);
+        
         $room->load('bookings');
         
         return view('rooms.show', compact('room'));
@@ -120,6 +154,13 @@ class RoomController extends Controller
     public function edit(Room $room)
     {
         $this->authorizeHotel($room);
+        
+        // Log room edit form access
+        logActivity('edit_form_accessed', $room, "Accessed edit form for room: {$room->room_number}", [
+            'room_id' => $room->id,
+            'room_number' => $room->room_number,
+        ]);
+        
         $hotelId = session('hotel_id');
         $roomTypes = \App\Models\RoomType::where('hotel_id', $hotelId)
             ->where('is_active', true)
@@ -233,14 +274,88 @@ class RoomController extends Controller
                 ->with('error', 'Cannot delete room with active bookings.');
         }
 
-        $roomNumber = $room->room_number;
-        $roomId = $room->id;
+        // Capture room details before deletion
+        $roomDetails = [
+            'room_id' => $room->id,
+            'room_number' => $room->room_number,
+            'status' => $room->status,
+            'cleaning_status' => $room->cleaning_status,
+            'capacity' => $room->capacity,
+            'price_per_night' => $room->price_per_night,
+        ];
+        
+        // Soft delete the room
         $room->delete();
 
-        logActivity('deleted', null, "Deleted room {$roomNumber}", ['room_id' => $roomId]);
+        logActivity('deleted', $room, "Deleted room: {$roomDetails['room_number']}", $roomDetails);
 
         return redirect()->route('rooms.index')
             ->with('success', 'Room deleted successfully.');
+    }
+
+    /**
+     * Restore a soft-deleted room
+     */
+    public function restore($id)
+    {
+        $room = Room::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($room);
+
+        $room->restore();
+
+        // Log the restoration
+        logActivity('restored', $room, "Restored room: {$room->room_number}", [
+            'room_id' => $room->id,
+            'room_number' => $room->room_number,
+        ]);
+
+        return redirect()->route('rooms.index')
+            ->with('success', 'Room restored successfully.');
+    }
+
+    /**
+     * Permanently delete a room
+     */
+    public function forceDelete($id)
+    {
+        $room = Room::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($room);
+
+        // Check if room has any bookings (including soft-deleted)
+        $hasBookings = $room->bookings()->withTrashed()->exists();
+
+        if ($hasBookings) {
+            return redirect()->route('rooms.index')
+                ->with('error', 'Cannot permanently delete room with associated bookings.');
+        }
+
+        // Capture room details before permanent deletion
+        $roomDetails = [
+            'room_id' => $room->id,
+            'room_number' => $room->room_number,
+            'status' => $room->status,
+            'cleaning_status' => $room->cleaning_status,
+            'capacity' => $room->capacity,
+            'price_per_night' => $room->price_per_night,
+        ];
+
+        // Delete images if exist
+        if ($room->images) {
+            foreach ($room->images as $image) {
+                if (Storage::disk('public')->exists(str_replace('/storage/', '', $image))) {
+                    Storage::disk('public')->delete(str_replace('/storage/', '', $image));
+                }
+            }
+        }
+
+        // Permanently delete the room
+        $room->forceDelete();
+
+        // Log the permanent deletion
+        logActivity('force_deleted', null, "Permanently deleted room: {$roomDetails['room_number']}", $roomDetails);
+
+        return redirect()->route('rooms.index')
+            ->with('success', 'Room permanently deleted.');
     }
 
     /**

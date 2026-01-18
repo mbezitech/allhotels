@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\User;
 
 class Booking extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'hotel_id',
         'room_id',
@@ -21,6 +24,8 @@ class Booking extends Model
         'adults',
         'children',
         'total_amount',
+        'discount',
+        'final_amount',
         'status',
         'source',
         'created_by',
@@ -32,6 +37,8 @@ class Booking extends Model
         'check_in' => 'date',
         'check_out' => 'date',
         'total_amount' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'final_amount' => 'decimal:2',
     ];
 
     /**
@@ -56,6 +63,14 @@ class Booking extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Get all POS sales linked to this booking
+     */
+    public function posSales(): HasMany
+    {
+        return $this->hasMany(PosSale::class);
     }
 
     /**
@@ -91,11 +106,41 @@ class Booking extends Model
     }
 
     /**
-     * Get outstanding balance
+     * Get final amount (total_amount - discount)
+     */
+    public function getFinalAmountAttribute(): float
+    {
+        if (isset($this->attributes['final_amount']) && $this->attributes['final_amount'] > 0) {
+            return $this->attributes['final_amount'];
+        }
+        return max(0, ($this->total_amount ?? 0) - ($this->discount ?? 0));
+    }
+
+    /**
+     * Get total outstanding balance from POS sales linked to this booking
+     */
+    public function getTotalPosChargesAttribute(): float
+    {
+        return $this->posSales()
+            ->where('payment_status', '!=', 'paid')
+            ->get()
+            ->sum(function ($sale) {
+                return $sale->outstanding_balance;
+            });
+    }
+
+    /**
+     * Get outstanding balance (based on final_amount + POS charges)
      */
     public function getOutstandingBalanceAttribute(): float
     {
-        return max(0, $this->total_amount - $this->total_paid);
+        $finalAmount = $this->final_amount;
+        $bookingBalance = max(0, $finalAmount - $this->total_paid);
+        
+        // Add outstanding POS charges
+        $posCharges = $this->total_pos_charges;
+        
+        return $bookingBalance + $posCharges;
     }
 
     /**

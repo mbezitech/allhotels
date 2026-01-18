@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Role extends Model
@@ -11,14 +12,25 @@ class Role extends Model
         'name',
         'slug',
         'description',
+        'hotel_id',
     ];
 
     /**
-     * Get permissions for this role
+     * Get the hotel that owns this role
+     */
+    public function hotel(): BelongsTo
+    {
+        return $this->belongsTo(Hotel::class);
+    }
+
+    /**
+     * Get permissions for this role (hotel-scoped)
      */
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permissions')
+            ->wherePivot('hotel_id', $this->hotel_id)
+            ->where('permissions.hotel_id', $this->hotel_id)
             ->withTimestamps();
     }
 

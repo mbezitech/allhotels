@@ -6,22 +6,47 @@ use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class RolesSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * Creates roles for a specific hotel or all hotels if hotel_id is null.
      */
-    public function run(): void
+    public function run(?int $hotelId = null): void
     {
-        // Manager Role - Full access including user management
-        $manager = Role::updateOrCreate(
-            ['slug' => 'manager'],
-            [
-                'name' => 'Manager',
-                'description' => 'Full access to hotel operations including user management'
-            ]
-        );
+        // If no hotel_id provided, get all hotels
+        if ($hotelId) {
+            $hotel = \App\Models\Hotel::find($hotelId);
+            if (!$hotel) {
+                if ($this->command) {
+                    $this->command->warn("Hotel with ID {$hotelId} not found.");
+                }
+                return;
+            }
+            $hotels = collect([$hotel]);
+        } else {
+            $hotels = \App\Models\Hotel::all();
+        }
+        
+        if ($hotels->isEmpty()) {
+            if ($this->command) {
+                $this->command->warn('No hotels found. Please create a hotel first.');
+            }
+            return;
+        }
+        
+        foreach ($hotels as $hotel) {
+            // Manager Role - Full access including user management
+            $manager = Role::updateOrCreate(
+                ['slug' => 'manager', 'hotel_id' => $hotel->id],
+                [
+                    'name' => 'Manager',
+                    'description' => 'Full access to hotel operations including user management',
+                    'hotel_id' => $hotel->id
+                ]
+            );
 
         $managerPermissions = [
             // Dashboard
@@ -59,18 +84,34 @@ class RolesSeeder extends Seeder
             'users.view', 'users.manage', 'users.edit', 'users.activate',
         ];
 
-        $manager->permissions()->sync(
-            Permission::whereIn('slug', $managerPermissions)->pluck('id')
-        );
+            $managerPermissionIds = Permission::where('hotel_id', $hotel->id)
+                ->whereIn('slug', $managerPermissions)
+                ->pluck('id')
+                ->toArray();
+            
+            // Detach all existing permissions first
+            $manager->permissions()->detach();
+            
+            // Attach permissions with hotel_id in pivot
+            foreach ($managerPermissionIds as $permissionId) {
+                DB::table('role_permissions')->insert([
+                    'role_id' => $manager->id,
+                    'permission_id' => $permissionId,
+                    'hotel_id' => $hotel->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
-        // Receptionist Role - Bookings and basic operations
-        $receptionist = Role::updateOrCreate(
-            ['slug' => 'receptionist'],
-            [
-                'name' => 'Receptionist',
-                'description' => 'Handle bookings, view rooms, and process payments'
-            ]
-        );
+            // Receptionist Role - Bookings and basic operations
+            $receptionist = Role::updateOrCreate(
+                ['slug' => 'receptionist', 'hotel_id' => $hotel->id],
+                [
+                    'name' => 'Receptionist',
+                    'description' => 'Handle bookings, view rooms, and process payments',
+                    'hotel_id' => $hotel->id
+                ]
+            );
 
         $receptionistPermissions = [
             // Dashboard
@@ -90,18 +131,34 @@ class RolesSeeder extends Seeder
             'tasks.view', 'tasks.create',
         ];
 
-        $receptionist->permissions()->sync(
-            Permission::whereIn('slug', $receptionistPermissions)->pluck('id')
-        );
+            $receptionistPermissionIds = Permission::where('hotel_id', $hotel->id)
+                ->whereIn('slug', $receptionistPermissions)
+                ->pluck('id')
+                ->toArray();
+            
+            // Detach all existing permissions first
+            $receptionist->permissions()->detach();
+            
+            // Attach permissions with hotel_id in pivot
+            foreach ($receptionistPermissionIds as $permissionId) {
+                DB::table('role_permissions')->insert([
+                    'role_id' => $receptionist->id,
+                    'permission_id' => $permissionId,
+                    'hotel_id' => $hotel->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
-        // Staff Role - POS and basic viewing
-        $staff = Role::updateOrCreate(
-            ['slug' => 'staff'],
-            [
-                'name' => 'Staff',
-                'description' => 'POS operations and basic viewing'
-            ]
-        );
+            // Staff Role - POS and basic viewing
+            $staff = Role::updateOrCreate(
+                ['slug' => 'staff', 'hotel_id' => $hotel->id],
+                [
+                    'name' => 'Staff',
+                    'description' => 'POS operations and basic viewing',
+                    'hotel_id' => $hotel->id
+                ]
+            );
 
         $staffPermissions = [
             // Dashboard
@@ -113,22 +170,58 @@ class RolesSeeder extends Seeder
             'extras.view',
         ];
 
-        $staff->permissions()->sync(
-            Permission::whereIn('slug', $staffPermissions)->pluck('id')
-        );
+            $staffPermissionIds = Permission::where('hotel_id', $hotel->id)
+                ->whereIn('slug', $staffPermissions)
+                ->pluck('id')
+                ->toArray();
+            
+            // Detach all existing permissions first
+            $staff->permissions()->detach();
+            
+            // Attach permissions with hotel_id in pivot
+            foreach ($staffPermissionIds as $permissionId) {
+                DB::table('role_permissions')->insert([
+                    'role_id' => $staff->id,
+                    'permission_id' => $permissionId,
+                    'hotel_id' => $hotel->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
-        // Admin Role - Everything including user/role management
-        $admin = Role::updateOrCreate(
-            ['slug' => 'admin'],
-            [
-                'name' => 'Admin',
-                'description' => 'Full access including user and role management'
-            ]
-        );
+            // Admin Role - Everything including user/role management
+            $admin = Role::updateOrCreate(
+                ['slug' => 'admin', 'hotel_id' => $hotel->id],
+                [
+                    'name' => 'Admin',
+                    'description' => 'Full access including user and role management',
+                    'hotel_id' => $hotel->id
+                ]
+            );
 
-        $admin->permissions()->sync(Permission::pluck('id'));
+            $adminPermissionIds = Permission::where('hotel_id', $hotel->id)
+                ->pluck('id')
+                ->toArray();
+            
+            // Detach all existing permissions first
+            $admin->permissions()->detach();
+            
+            // Attach permissions with hotel_id in pivot
+            foreach ($adminPermissionIds as $permissionId) {
+                DB::table('role_permissions')->insert([
+                    'role_id' => $admin->id,
+                    'permission_id' => $permissionId,
+                    'hotel_id' => $hotel->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
 
-        $this->command->info('Roles seeded successfully!');
-        $this->command->info('Created roles: Manager, Receptionist, Staff, Admin');
+        if ($this->command) {
+            $this->command->info('Roles seeded successfully!');
+            $this->command->info('Created roles per hotel: Manager, Receptionist, Staff, Admin');
+            $this->command->info('Total hotels processed: ' . $hotels->count());
+        }
     }
 }

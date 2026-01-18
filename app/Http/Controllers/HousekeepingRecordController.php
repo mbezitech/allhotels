@@ -6,8 +6,10 @@ use App\Models\HousekeepingRecord;
 use App\Models\Room;
 use App\Models\HotelArea;
 use App\Models\User;
+use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class HousekeepingRecordController extends Controller
 {
@@ -82,7 +84,33 @@ class HousekeepingRecordController extends Controller
             $areas = collect();
         }
         
-        $users = User::all();
+        // Only show users who belong to the selected hotel
+        $users = collect();
+        if ($selectedHotelId) {
+            $hotel = \App\Models\Hotel::find($selectedHotelId);
+            $hotelOwnerId = $hotel ? $hotel->owner_id : null;
+            
+            // Get users who have roles in this hotel
+            $userIds = DB::table('user_roles')
+                ->where('hotel_id', $selectedHotelId)
+                ->distinct()
+                ->pluck('user_id')
+                ->toArray();
+            
+            // Include hotel owner if they exist
+            if ($hotelOwnerId) {
+                $userIds[] = $hotelOwnerId;
+            }
+            
+            $userIds = array_unique($userIds);
+            
+            if (!empty($userIds)) {
+                $users = User::whereIn('id', $userIds)
+                    ->where('is_super_admin', false)
+                    ->orderBy('name')
+                    ->get();
+            }
+        }
         
         // Get all hotels for super admin filter
         $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
@@ -116,7 +144,8 @@ class HousekeepingRecordController extends Controller
         
         $rooms = Room::where('hotel_id', $hotelId)->orderBy('room_number')->get();
         $areas = HotelArea::where('hotel_id', $hotelId)->where('is_active', true)->orderBy('name')->get();
-        $users = User::all();
+        // Only show users who belong to the current hotel
+        $users = $this->getUsersForHotel($hotelId);
         
         // Pre-select room if provided
         $roomId = $request->get('room_id');
@@ -247,7 +276,8 @@ class HousekeepingRecordController extends Controller
         $hotelId = session('hotel_id');
         $rooms = Room::where('hotel_id', $hotelId)->orderBy('room_number')->get();
         $areas = HotelArea::where('hotel_id', $hotelId)->where('is_active', true)->orderBy('name')->get();
-        $users = User::all();
+        // Only show users who belong to the housekeeping record's hotel
+        $users = $this->getUsersForHotel($housekeepingRecord->hotel_id);
         return view('housekeeping-records.edit', compact('housekeepingRecord', 'rooms', 'areas', 'users'));
     }
 
@@ -542,5 +572,46 @@ class HousekeepingRecordController extends Controller
         if ($record->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this record.');
         }
+    }
+    
+    /**
+     * Get users who belong to a specific hotel
+     * Users belong to a hotel if they have roles in that hotel or are the hotel owner
+     */
+    private function getUsersForHotel(?int $hotelId)
+    {
+        if (!$hotelId) {
+            return collect();
+        }
+        
+        $hotel = Hotel::find($hotelId);
+        if (!$hotel) {
+            return collect();
+        }
+        
+        $hotelOwnerId = $hotel->owner_id;
+        
+        // Get users who have roles in this hotel
+        $userIds = DB::table('user_roles')
+            ->where('hotel_id', $hotelId)
+            ->distinct()
+            ->pluck('user_id')
+            ->toArray();
+        
+        // Include hotel owner if they exist
+        if ($hotelOwnerId) {
+            $userIds[] = $hotelOwnerId;
+        }
+        
+        $userIds = array_unique($userIds);
+        
+        if (empty($userIds)) {
+            return collect();
+        }
+        
+        return User::whereIn('id', $userIds)
+            ->where('is_super_admin', false)
+            ->orderBy('name')
+            ->get();
     }
 }

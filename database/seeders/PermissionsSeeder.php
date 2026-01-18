@@ -10,9 +10,31 @@ class PermissionsSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * Creates permissions for a specific hotel or all hotels if hotel_id is null.
      */
-    public function run(): void
+    public function run(?int $hotelId = null): void
     {
+        // If no hotel_id provided, get all hotels
+        if ($hotelId) {
+            $hotel = \App\Models\Hotel::find($hotelId);
+            if (!$hotel) {
+                if ($this->command) {
+                    $this->command->warn("Hotel with ID {$hotelId} not found.");
+                }
+                return;
+            }
+            $hotels = collect([$hotel]);
+        } else {
+            $hotels = \App\Models\Hotel::all();
+        }
+        
+        if ($hotels->isEmpty()) {
+            if ($this->command) {
+                $this->command->warn('No hotels found. Please create a hotel first.');
+            }
+            return;
+        }
+        
         $permissions = [
             // ============================================
             // DASHBOARD MODULE
@@ -148,14 +170,27 @@ class PermissionsSeeder extends Seeder
             ['name' => 'View Expense Reports', 'slug' => 'expense_reports.view', 'description' => 'View expense reports and summaries'],
         ];
 
-        foreach ($permissions as $permission) {
-            Permission::updateOrCreate(
-                ['slug' => $permission['slug']],
-                $permission
-            );
+        // Create permissions for each hotel
+        foreach ($hotels as $hotel) {
+            foreach ($permissions as $permission) {
+                Permission::updateOrCreate(
+                    [
+                        'slug' => $permission['slug'],
+                        'hotel_id' => $hotel->id
+                    ],
+                    array_merge($permission, ['hotel_id' => $hotel->id])
+                );
+            }
+            
+            if ($this->command) {
+                $this->command->info("Permissions seeded for hotel: {$hotel->name} (ID: {$hotel->id})");
+            }
         }
 
-        $this->command->info('Permissions seeded successfully!');
-        $this->command->info('Total permissions: ' . count($permissions));
+        if ($this->command) {
+            $this->command->info('Permissions seeded successfully!');
+            $this->command->info('Total permissions per hotel: ' . count($permissions));
+            $this->command->info('Total hotels processed: ' . $hotels->count());
+        }
     }
 }

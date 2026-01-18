@@ -64,6 +64,61 @@
             text-transform: uppercase;
             color: rgba(255,255,255,0.5);
             letter-spacing: 1px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .nav-section:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .nav-section-toggle {
+            font-size: 14px;
+            transition: transform 0.3s;
+        }
+        .nav-section.collapsed .nav-section-toggle {
+            transform: rotate(-90deg);
+        }
+        .nav-section-items {
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .nav-section.collapsed + .nav-section-items {
+            max-height: 0;
+        }
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1001;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .mobile-menu-toggle:hover {
+            background: #34495e;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .sidebar-overlay.active {
+            display: block;
         }
         .main-content {
             margin-left: 250px;
@@ -102,19 +157,54 @@
             padding: 30px;
         }
         @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
             .sidebar {
                 transform: translateX(-100%);
-                transition: transform 0.3s;
+                transition: transform 0.3s ease-in-out;
+                z-index: 1000;
+                width: 280px;
+            }
+            .sidebar.mobile-open {
+                transform: translateX(0);
             }
             .main-content {
                 margin-left: 0;
+            }
+            .top-bar {
+                padding-left: 60px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .user-menu {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .content-area {
+                padding: 15px;
+            }
+        }
+        @media (max-width: 480px) {
+            .top-bar h2 {
+                font-size: 18px;
+            }
+            .user-name {
+                display: none;
+            }
+            .sidebar {
+                width: 100%;
             }
         }
     </style>
     @stack('styles')
 </head>
 <body>
-    <div class="sidebar">
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+        ☰
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileMenu()"></div>
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h1>Hotel Management</h1>
             @if(session('hotel_id'))
@@ -137,175 +227,215 @@
                 </li>
                 
                 @if(auth()->user()->hasPermission('rooms.view') || auth()->user()->isSuperAdmin())
-                    <li class="nav-section">Rooms & Bookings</li>
-                    <li class="nav-item">
-                        <a href="{{ route('links.index') }}" class="nav-link {{ request()->routeIs('links.*') ? 'active' : '' }}">
-                            Link References
-                        </a>
+                    <li class="nav-section" onclick="toggleSection(this)">
+                        <span>Rooms & Bookings</span>
+                        <span class="nav-section-toggle">▼</span>
                     </li>
-                    <li class="nav-item">
-                        <a href="{{ route('rooms.index') }}" class="nav-link {{ request()->routeIs('rooms.*') ? 'active' : '' }}">
-                            Rooms
-                        </a>
-                    </li>
-                    @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
+                    <div class="nav-section-items">
                         <li class="nav-item">
-                            <a href="{{ route('room-types.index') }}" class="nav-link {{ request()->routeIs('room-types.*') ? 'active' : '' }}">
-                                Room Types
+                            <a href="{{ route('links.index') }}" class="nav-link {{ request()->routeIs('links.*') ? 'active' : '' }}">
+                                Link References
                             </a>
                         </li>
-                    @endif
-                    <li class="nav-item">
-                        <a href="{{ route('bookings.index') }}" class="nav-link {{ request()->routeIs('bookings.*') ? 'active' : '' }}">
-                            Bookings
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a href="{{ route('rooms.index') }}" class="nav-link {{ request()->routeIs('rooms.*') ? 'active' : '' }}">
+                                Rooms
+                            </a>
+                        </li>
+                        @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
+                            <li class="nav-item">
+                                <a href="{{ route('room-types.index') }}" class="nav-link {{ request()->routeIs('room-types.*') ? 'active' : '' }}">
+                                    Room Types
+                                </a>
+                            </li>
+                        @endif
+                        <li class="nav-item">
+                            <a href="{{ route('bookings.index') }}" class="nav-link {{ request()->routeIs('bookings.*') ? 'active' : '' }}">
+                                Bookings
+                            </a>
+                        </li>
+                    </div>
                 @endif
 
                 @if(auth()->user()->hasPermission('housekeeping.view') || auth()->user()->isSuperAdmin())
-                    <li class="nav-section">Housekeeping</li>
-                    <li class="nav-item">
-                        <a href="{{ route('housekeeping-records.index') }}" class="nav-link {{ request()->routeIs('housekeeping-records.*') ? 'active' : '' }}">
-                            Cleaning Records
-                        </a>
+                    <li class="nav-section" onclick="toggleSection(this)">
+                        <span>Housekeeping</span>
+                        <span class="nav-section-toggle">▼</span>
                     </li>
-                    <li class="nav-item">
-                        <a href="{{ route('hotel-areas.index') }}" class="nav-link {{ request()->routeIs('hotel-areas.*') ? 'active' : '' }}">
-                            Hotel Areas
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('housekeeping-reports.index') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.*') && !request()->routeIs('housekeeping-reports.issues') ? 'active' : '' }}">
-                            Reports
-                        </a>
-                    </li>
-                    @if(auth()->user()->hasPermission('housekeeping_reports.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
-                    <li class="nav-item">
-                        <a href="{{ route('housekeeping-reports.issues') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.issues') ? 'active' : '' }}">
-                            Issues & Resolutions
-                        </a>
-                    </li>
-                    @endif
-                    <li class="nav-item">
-                        <a href="{{ route('tasks.index') }}" class="nav-link {{ request()->routeIs('tasks.*') ? 'active' : '' }}">
-                            Tasks
-                        </a>
-                    </li>
+                    <div class="nav-section-items">
+                        <li class="nav-item">
+                            <a href="{{ route('housekeeping-records.index') }}" class="nav-link {{ request()->routeIs('housekeeping-records.*') ? 'active' : '' }}">
+                                Cleaning Records
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('hotel-areas.index') }}" class="nav-link {{ request()->routeIs('hotel-areas.*') ? 'active' : '' }}">
+                                Hotel Areas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('housekeeping-reports.index') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.*') && !request()->routeIs('housekeeping-reports.issues') ? 'active' : '' }}">
+                                Reports
+                            </a>
+                        </li>
+                        @if(auth()->user()->hasPermission('housekeeping_reports.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                        <li class="nav-item">
+                            <a href="{{ route('housekeeping-reports.issues') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.issues') ? 'active' : '' }}">
+                                Issues & Resolutions
+                            </a>
+                        </li>
+                        @endif
+                        <li class="nav-item">
+                            <a href="{{ route('tasks.index') }}" class="nav-link {{ request()->routeIs('tasks.*') ? 'active' : '' }}">
+                                Tasks
+                            </a>
+                        </li>
+                    </div>
                 @endif
 
                 @if(auth()->user()->hasPermission('pos.view') || auth()->user()->isSuperAdmin())
-                    <li class="nav-section">Products & POS</li>
-                    <li class="nav-item">
-                        <a href="{{ route('extras.index') }}" class="nav-link {{ request()->routeIs('extras.*') ? 'active' : '' }}">
-                            Products
-                        </a>
+                    <li class="nav-section" onclick="toggleSection(this)">
+                        <span>Products & POS</span>
+                        <span class="nav-section-toggle">▼</span>
                     </li>
-                    @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+                    <div class="nav-section-items">
                         <li class="nav-item">
-                            <a href="{{ route('extra-categories.index') }}" class="nav-link {{ request()->routeIs('extra-categories.*') ? 'active' : '' }}">
-                                Product Categories
+                            <a href="{{ route('extras.index') }}" class="nav-link {{ request()->routeIs('extras.*') ? 'active' : '' }}">
+                                Products
                             </a>
                         </li>
-                    @endif
-                    <li class="nav-item">
-                        <a href="{{ route('pos-sales.index') }}" class="nav-link {{ request()->routeIs('pos-sales.*') ? 'active' : '' }}">
-                            POS Sales
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('stock-movements.index') }}" class="nav-link {{ request()->routeIs('stock-movements.*') ? 'active' : '' }}">
-                            Stock Movements
-                        </a>
-                    </li>
+                        @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+                            <li class="nav-item">
+                                <a href="{{ route('extra-categories.index') }}" class="nav-link {{ request()->routeIs('extra-categories.*') ? 'active' : '' }}">
+                                    Product Categories
+                                </a>
+                            </li>
+                        @endif
+                        <li class="nav-item">
+                            <a href="{{ route('pos-sales.index') }}" class="nav-link {{ request()->routeIs('pos-sales.*') ? 'active' : '' }}">
+                                POS Sales
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('stock-movements.index') }}" class="nav-link {{ request()->routeIs('stock-movements.*') ? 'active' : '' }}">
+                                Stock Movements
+                            </a>
+                        </li>
+                    </div>
                 @endif
 
                 @if(auth()->user()->hasPermission('payments.view') || auth()->user()->hasPermission('expenses.view') || auth()->user()->isSuperAdmin())
-                    <li class="nav-section">Financial</li>
-                    @if(auth()->user()->hasPermission('payments.view') || auth()->user()->isSuperAdmin())
-                        <li class="nav-item">
-                            <a href="{{ route('payments.index') }}" class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
-                                Payments
-                            </a>
-                        </li>
-                    @endif
-                    @if(auth()->user()->hasPermission('expenses.view') || auth()->user()->isSuperAdmin())
-                        <li class="nav-item">
-                            <a href="{{ route('expenses.index') }}" class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
-                                Expenses
-                            </a>
-                        </li>
-                    @endif
-                    @if(auth()->user()->hasPermission('expense_categories.view') || auth()->user()->isSuperAdmin())
-                        <li class="nav-item">
-                            <a href="{{ route('expense-categories.index') }}" class="nav-link {{ request()->routeIs('expense-categories.*') ? 'active' : '' }}">
-                                Expense Categories
-                            </a>
-                        </li>
-                    @endif
-                    @if(auth()->user()->hasPermission('expense_reports.view') || auth()->user()->isSuperAdmin())
-                        <li class="nav-item">
-                            <a href="{{ route('expense-reports.index') }}" class="nav-link {{ request()->routeIs('expense-reports.*') ? 'active' : '' }}">
-                                Expense Reports
-                            </a>
-                        </li>
-                    @endif
+                    <li class="nav-section" onclick="toggleSection(this)">
+                        <span>Financial</span>
+                        <span class="nav-section-toggle">▼</span>
+                    </li>
+                    <div class="nav-section-items">
+                        @if(auth()->user()->hasPermission('payments.view') || auth()->user()->isSuperAdmin())
+                            <li class="nav-item">
+                                <a href="{{ route('payments.index') }}" class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
+                                    Payments
+                                </a>
+                            </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('expenses.view') || auth()->user()->isSuperAdmin())
+                            <li class="nav-item">
+                                <a href="{{ route('expenses.index') }}" class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
+                                    Expenses
+                                </a>
+                            </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('expense_categories.view') || auth()->user()->isSuperAdmin())
+                            <li class="nav-item">
+                                <a href="{{ route('expense-categories.index') }}" class="nav-link {{ request()->routeIs('expense-categories.*') ? 'active' : '' }}">
+                                    Expense Categories
+                                </a>
+                            </li>
+                        @endif
+                        @if(auth()->user()->hasPermission('expense_reports.view') || auth()->user()->isSuperAdmin())
+                            <li class="nav-item">
+                                <a href="{{ route('expense-reports.index') }}" class="nav-link {{ request()->routeIs('expense-reports.*') ? 'active' : '' }}">
+                                    Expense Reports
+                                </a>
+                            </li>
+                        @endif
+                    </div>
                 @endif
 
                 @if(auth()->user()->hasPermission('reports.view') || auth()->user()->isSuperAdmin())
-                    <li class="nav-section">Reports</li>
-                    <li class="nav-item">
-                        <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-                            Reports
-                        </a>
+                    <li class="nav-section" onclick="toggleSection(this)">
+                        <span>Reports</span>
+                        <span class="nav-section-toggle">▼</span>
                     </li>
+                    <div class="nav-section-items">
+                        <li class="nav-item">
+                            <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                                Reports
+                            </a>
+                        </li>
+                    </div>
                 @endif
 
                 @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('users.manage'))
-                    <li class="nav-section">Administration</li>
-                    @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('users.manage'))
-                    <li class="nav-item">
-                        <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                            Users
-                        </a>
+                    <li class="nav-section" onclick="toggleSection(this)">
+                        <span>Administration</span>
+                        <span class="nav-section-toggle">▼</span>
                     </li>
-                    @endif
-                    @if(auth()->user()->isSuperAdmin())
-                    <li class="nav-item">
-                        <a href="{{ route('hotels.index') }}" class="nav-link {{ request()->routeIs('hotels.*') ? 'active' : '' }}">
-                            Hotels
-                        </a>
-                    </li>
-                    @endif
+                    <div class="nav-section-items">
+                        @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('users.manage'))
+                        <li class="nav-item">
+                            <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                                Users
+                            </a>
+                        </li>
+                        @endif
+                        @if(auth()->user()->isSuperAdmin())
+                        <li class="nav-item">
+                            <a href="{{ route('hotels.index') }}" class="nav-link {{ request()->routeIs('hotels.*') ? 'active' : '' }}">
+                                Hotels
+                            </a>
+                        </li>
+                        @endif
+                    </div>
                 @endif
 
                 @if(auth()->user()->hasPermission('roles.manage') || auth()->user()->isSuperAdmin())
-                    <li class="nav-section">User Management</li>
-                    <li class="nav-item">
-                        <a href="{{ route('roles.index') }}" class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
-                            Roles
-                        </a>
+                    <li class="nav-section" onclick="toggleSection(this)">
+                        <span>User Management</span>
+                        <span class="nav-section-toggle">▼</span>
                     </li>
-                    <li class="nav-item">
-                        <a href="{{ route('user-roles.create') }}" class="nav-link {{ request()->routeIs('user-roles.*') ? 'active' : '' }}">
-                            User Roles
-                        </a>
-                    </li>
+                    <div class="nav-section-items">
+                        <li class="nav-item">
+                            <a href="{{ route('roles.index') }}" class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                                Roles
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('user-roles.create') }}" class="nav-link {{ request()->routeIs('user-roles.*') ? 'active' : '' }}">
+                                User Roles
+                            </a>
+                        </li>
+                    </div>
                 @endif
 
                 @if(auth()->user()->hasPermission('activity_logs.view') || auth()->user()->isSuperAdmin())
-                    <li class="nav-section">System</li>
-                    @if(auth()->user()->hasPermission('email_settings.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                    <li class="nav-section" onclick="toggleSection(this)">
+                        <span>System</span>
+                        <span class="nav-section-toggle">▼</span>
+                    </li>
+                    <div class="nav-section-items">
+                        @if(auth()->user()->hasPermission('email_settings.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                            <li class="nav-item">
+                                <a href="{{ route('email-settings.index') }}" class="nav-link {{ request()->routeIs('email-settings.*') ? 'active' : '' }}">
+                                    Email Settings
+                                </a>
+                            </li>
+                        @endif
                         <li class="nav-item">
-                            <a href="{{ route('email-settings.index') }}" class="nav-link {{ request()->routeIs('email-settings.*') ? 'active' : '' }}">
-                                Email Settings
+                            <a href="{{ route('activity-logs.index') }}" class="nav-link {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
+                                Activity Logs
                             </a>
                         </li>
-                    @endif
-                    <li class="nav-item">
-                        <a href="{{ route('activity-logs.index') }}" class="nav-link {{ request()->routeIs('activity-logs.*') ? 'active' : '' }}">
-                            Activity Logs
-                        </a>
-                    </li>
+                    </div>
                 @endif
             </ul>
         </nav>
@@ -362,8 +492,48 @@
         </div>
     </div>
 
-    @if(auth()->user()->isSuperAdmin())
     <script>
+        // Toggle collapsible sections
+        function toggleSection(element) {
+            element.classList.toggle('collapsed');
+        }
+
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        // Close mobile menu
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+
+        // Close mobile menu when clicking on a link
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        closeMobileMenu();
+                    }
+                });
+            });
+
+            // Close mobile menu on window resize if desktop
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    closeMobileMenu();
+                }
+            });
+        });
+
+        @if(auth()->user()->isSuperAdmin())
         function switchHotel(hotelId) {
             const form = document.createElement('form');
             form.method = 'POST';
@@ -386,8 +556,8 @@
             document.body.appendChild(form);
             form.submit();
         }
+        @endif
     </script>
-    @endif
 
     @stack('scripts')
 </body>

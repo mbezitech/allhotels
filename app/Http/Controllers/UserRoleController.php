@@ -49,15 +49,33 @@ class UserRoleController extends Controller
             ->pluck('user_id')
             ->toArray();
         
-        // For the dropdown: Show ALL users (except super admins) so roles can be assigned to anyone
-        // This allows assigning roles to users who don't have roles yet
+        // For the dropdown: Only show users who belong to this hotel
+        // Users belong to a hotel if they:
+        // 1. Have roles in this hotel, OR
+        // 2. Are the owner of this hotel
+        $hotelOwnerId = $hotel->owner_id;
+        $userIdsInHotel = DB::table('user_roles')
+            ->where('hotel_id', $hotelId)
+            ->distinct()
+            ->pluck('user_id')
+            ->toArray();
+        
+        // Include hotel owner if they exist
+        if ($hotelOwnerId) {
+            $userIdsInHotel[] = $hotelOwnerId;
+        }
+        
+        $userIdsInHotel = array_unique($userIdsInHotel);
+        
+        // Only show users who belong to this hotel (have roles or are owner)
         $users = User::where('is_super_admin', false)
+            ->whereIn('id', $userIdsInHotel)
             ->orderBy('name')
             ->get();
         
         // Get users who already have roles in this hotel (for display table)
         // Include hotel owner even if they don't have a role yet
-        $hotelOwnerId = $hotel->owner_id;
+        // $hotelOwnerId is already defined above
         $displayUserIds = array_unique(array_merge($userIdsWithRoles, $hotelOwnerId ? [$hotelOwnerId] : []));
         
         $usersWithRoles = User::whereIn('id', $displayUserIds)
@@ -71,11 +89,14 @@ class UserRoleController extends Controller
                     ->pluck('role_id')
                     ->toArray();
                 
-                $user->roles = Role::whereIn('id', $roleIds)->get();
+                $user->roles = Role::where('hotel_id', $hotelId)
+                    ->whereIn('id', $roleIds)
+                    ->get();
                 return $user;
             });
         
-        $roles = Role::all();
+        // Get only roles for this hotel
+        $roles = Role::where('hotel_id', $hotelId)->orderBy('name')->get();
         
         return view('user-roles.create', compact('hotel', 'users', 'usersWithRoles', 'roles', 'isSuperAdmin', 'allHotels'));
     }
@@ -89,6 +110,15 @@ class UserRoleController extends Controller
             'user_id' => 'required|exists:users,id',
             'role_id' => 'required|exists:roles,id',
         ]);
+        
+        // Verify role belongs to this hotel
+        $role = Role::where('id', $validated['role_id'])
+            ->where('hotel_id', $hotelId)
+            ->first();
+            
+        if (!$role) {
+            return back()->with('error', 'Selected role does not belong to this hotel.');
+        }
 
         $hotelId = session('hotel_id');
         
@@ -134,6 +164,11 @@ class UserRoleController extends Controller
         
         if (!$hotelId) {
             return back()->with('error', 'Please select a hotel.');
+        }
+        
+        // Verify role belongs to this hotel
+        if ($role->hotel_id != $hotelId) {
+            return back()->with('error', 'This role does not belong to the selected hotel.');
         }
 
         DB::table('user_roles')

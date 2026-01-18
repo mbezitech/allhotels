@@ -142,11 +142,21 @@
                             </td>
                             <td>
                                 <a href="{{ route('roles.edit', $role) }}" class="btn btn-edit">Edit</a>
-                                <form action="{{ route('roles.destroy', $role) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger">Delete</button>
-                                </form>
+                                @php
+                                    $hotelId = session('hotel_id');
+                                    $hotel = $hotelId ? \App\Models\Hotel::find($hotelId) : null;
+                                    $isOwner = $hotel && $hotel->owner_id === auth()->id();
+                                    $isAdminRole = $role->slug === 'admin';
+                                @endphp
+                                @if(!($isOwner && $isAdminRole))
+                                    <form action="{{ route('roles.destroy', $role) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                @else
+                                    <span style="color: #999; font-size: 12px;">Cannot delete admin role</span>
+                                @endif
                             </td>
                         </tr>
                     @empty

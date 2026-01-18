@@ -11,6 +11,7 @@ class PosSale extends Model
     protected $fillable = [
         'hotel_id',
         'room_id',
+        'booking_id',
         'sale_reference',
         'user_id',
         'sale_date',
@@ -42,6 +43,14 @@ class PosSale extends Model
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
+    }
+
+    /**
+     * Get the booking (if attached)
+     */
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(Booking::class);
     }
 
     /**

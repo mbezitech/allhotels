@@ -6,6 +6,7 @@ use App\Models\Extra;
 use App\Models\PosSale;
 use App\Models\PosSaleItem;
 use App\Models\Room;
+use App\Models\Booking;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,11 +33,14 @@ class PosSaleController extends Controller
             $query->where('hotel_id', $request->hotel_id);
         }
         
-        $query->with(['room', 'items.extra', 'user', 'hotel']);
+        $query->with(['room', 'items.extra', 'user', 'hotel', 'booking']);
 
-        // Filter by date
-        if ($request->has('date') && $request->date) {
-            $query->whereDate('sale_date', $request->date);
+        // Filter by date range
+        if ($request->has('from_date') && $request->from_date) {
+            $query->whereDate('sale_date', '>=', $request->from_date);
+        }
+        if ($request->has('to_date') && $request->to_date) {
+            $query->whereDate('sale_date', '<=', $request->to_date);
         }
 
         // Filter by payment status
@@ -44,14 +48,58 @@ class PosSaleController extends Controller
             $query->where('payment_status', $request->payment_status);
         }
 
+        // Filter by room
+        if ($request->has('room_id') && $request->room_id) {
+            $query->where('room_id', $request->room_id);
+        }
+
+        // Filter by booking
+        if ($request->has('booking_id') && $request->booking_id) {
+            $query->where('booking_id', $request->booking_id);
+        }
+
+        // Filter by amount range
+        if ($request->has('amount_from') && $request->amount_from) {
+            $query->where('final_amount', '>=', $request->amount_from);
+        }
+        if ($request->has('amount_to') && $request->amount_to) {
+            $query->where('final_amount', '<=', $request->amount_to);
+        }
+
+        // Search by sale reference
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('sale_reference', 'like', "%{$search}%")
+                  ->orWhere('notes', 'like', "%{$search}%");
+            });
+        }
+
         $sales = $query->orderBy('sale_date', 'desc')
             ->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         // Get all hotels for super admin filter
         $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
 
-        return view('pos-sales.index', compact('sales', 'hotels', 'isSuperAdmin'));
+        // Get rooms for filter dropdown
+        $rooms = collect();
+        $bookings = collect();
+        if ($hotelId || ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id)) {
+            $filterHotelId = $isSuperAdmin && $request->has('hotel_id') && $request->hotel_id ? $request->hotel_id : $hotelId;
+            $rooms = Room::where('hotel_id', $filterHotelId)
+                ->orderBy('room_number')
+                ->get(['id', 'room_number']);
+            $bookings = Booking::where('hotel_id', $filterHotelId)
+                ->where('status', 'checked_in')
+                ->with('room')
+                ->orderBy('check_in', 'desc')
+                ->limit(100)
+                ->get(['id', 'booking_reference', 'guest_name', 'room_id']);
+        }
+
+        return view('pos-sales.index', compact('sales', 'hotels', 'isSuperAdmin', 'rooms', 'bookings'));
     }
 
     /**
@@ -83,7 +131,14 @@ class PosSaleController extends Controller
             ->orderBy('room_number')
             ->get();
 
-        return view('pos-sales.create', compact('extras', 'rooms'));
+        // Get only checked-in bookings for guest billing (exclude confirmed and checked-out)
+        $activeBookings = Booking::where('hotel_id', $hotelId)
+            ->where('status', 'checked_in')
+            ->with('room')
+            ->orderBy('check_in', 'desc')
+            ->get();
+
+        return view('pos-sales.create', compact('extras', 'rooms', 'activeBookings'));
     }
 
     /**
@@ -93,6 +148,7 @@ class PosSaleController extends Controller
     {
         $validated = $request->validate([
             'room_id' => 'nullable|exists:rooms,id',
+            'booking_id' => 'nullable|exists:bookings,id',
             'sale_date' => 'required|date',
             'items' => 'required|array|min:1',
             'items.*.extra_id' => 'required|exists:extras,id',
@@ -109,6 +165,29 @@ class PosSaleController extends Controller
             $room = Room::findOrFail($validated['room_id']);
             if (!auth()->user()->isSuperAdmin() && $room->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this room.');
+            }
+        }
+
+        // Verify booking belongs to hotel and is active if provided
+        if (!empty($validated['booking_id'])) {
+            $booking = Booking::findOrFail($validated['booking_id']);
+            if (!auth()->user()->isSuperAdmin() && $booking->hotel_id != $hotelId) {
+                abort(403, 'Unauthorized access to this booking.');
+            }
+            
+            // Ensure booking is checked-in (only checked-in bookings can have charges attached)
+            if ($booking->status !== 'checked_in') {
+                return back()->withErrors(['booking_id' => 'Can only attach charges to checked-in bookings.'])->withInput();
+            }
+            
+            // If room_id is provided, ensure it matches booking's room
+            if ($validated['room_id'] && $booking->room_id != $validated['room_id']) {
+                return back()->withErrors(['room_id' => 'Selected room does not match the booking\'s room.'])->withInput();
+            }
+            
+            // Auto-set room_id from booking if not provided
+            if (!$validated['room_id'] && $booking->room_id) {
+                $validated['room_id'] = $booking->room_id;
             }
         }
 
@@ -152,6 +231,7 @@ class PosSaleController extends Controller
             $sale = PosSale::create([
                 'hotel_id' => $hotelId,
                 'room_id' => $validated['room_id'] ?? null,
+                'booking_id' => $validated['booking_id'] ?? null,
                 'sale_date' => $validated['sale_date'],
                 'total_amount' => $totalAmount,
                 'discount' => $discount,

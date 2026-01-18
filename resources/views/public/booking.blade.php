@@ -313,7 +313,23 @@
 
                     <div class="form-group">
                         <label for="guest_phone">Phone Number *</label>
-                        <input type="tel" id="guest_phone" name="guest_phone" value="{{ old('guest_phone') }}" required>
+                        <div style="display: flex; gap: 10px;">
+                            <div style="position: relative; width: 180px;">
+                                <input type="text" id="country_code_search" placeholder="🔍 Search..." 
+                                       style="width: 100%; padding: 12px 35px 12px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;"
+                                       onfocus="showCountryDropdown()" oninput="filterCountries()" onkeydown="handleCountrySearchKeydown(event)" autocomplete="off">
+                                <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #999; pointer-events: none; font-size: 12px;">🔍</span>
+                                <select id="country_code" name="country_code" 
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2;"
+                                        onchange="updateCountryDisplay();">
+                                    <option value="+1" {{ old('country_code', '+1') == '+1' ? 'selected' : '' }} data-display="🇺🇸 +1 (United States/Canada)">🇺🇸 +1 (United States/Canada)</option>
+                                </select>
+                                <div id="country_dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #667eea; border-radius: 8px; max-height: 400px; overflow-y: auto; z-index: 1000; margin-top: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></div>
+                            </div>
+                            <input type="tel" id="guest_phone" name="guest_phone" value="{{ old('guest_phone') }}" placeholder="Phone number" required style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;" oninput="validatePhoneNumber()">
+                        </div>
+                        <div id="phone_validation_message" style="margin-top: 5px; font-size: 13px;"></div>
+                        <small style="color: #666; display: block; margin-top: 5px;">Type country name or code to search, then enter phone number</small>
                         @error('guest_phone')
                             <span class="error">{{ $message }}</span>
                         @enderror
@@ -325,6 +341,7 @@
         </div>
     </div>
 
+    <script src="{{ asset('js/country-phone-data.js') }}"></script>
     <script>
         const pricePerNight = {{ $room->price_per_night }};
         const maxGuests = {{ $room->capacity }};
@@ -358,6 +375,298 @@
         if (document.getElementById('check_in').value && document.getElementById('check_out').value) {
             calculatePrice();
         }
+
+        // Country Code Search Functionality
+        let allCountries = [];
+        let selectedCountryIndex = -1;
+
+        function initializeCountryDropdown() {
+            const countrySelect = document.getElementById('country_code');
+            const searchInput = document.getElementById('country_code_search');
+            const dropdown = document.getElementById('country_dropdown');
+            const phoneInput = document.getElementById('guest_phone');
+            
+            if (!countrySelect || !searchInput || !dropdown) return;
+            
+            // Load all countries from external data
+            if (typeof getAllCountries === 'function') {
+                allCountries = getAllCountries();
+                
+                // Populate select with all countries
+                allCountries.forEach(country => {
+                    const option = document.createElement('option');
+                    option.value = country.code;
+                    option.textContent = country.display;
+                    option.setAttribute('data-display', country.display);
+                    
+                    if (country.code === '+1') {
+                        option.selected = true;
+                        searchInput.value = country.display;
+                        if (typeof getPhonePlaceholder === 'function') {
+                            phoneInput.placeholder = getPhonePlaceholder(country.code);
+                        }
+                    }
+                    
+                    countrySelect.appendChild(option);
+                });
+            }
+            
+            // Set initial display value
+            const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+            if (selectedOption) {
+                searchInput.value = selectedOption.getAttribute('data-display') || selectedOption.text;
+            }
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        function showCountryDropdown() {
+            const dropdown = document.getElementById('country_dropdown');
+            if (dropdown) {
+                dropdown.style.display = 'block';
+                filterCountries();
+            }
+        }
+
+        function filterCountries() {
+            const searchInput = document.getElementById('country_code_search');
+            const dropdown = document.getElementById('country_dropdown');
+            
+            if (!searchInput || !dropdown) return;
+            
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            dropdown.innerHTML = '';
+            selectedCountryIndex = -1;
+            
+            if (searchTerm.length === 0) {
+                // Show popular countries when empty
+                const popularCodes = ['+1', '+44', '+61', '+33', '+49', '+39', '+34', '+86', '+91', '+81'];
+                const popularCountries = allCountries.filter(c => popularCodes.includes(c.code));
+                displayCountries(popularCountries.slice(0, 10), dropdown, searchInput);
+                return;
+            }
+            
+            // Filter from all countries data
+            const filtered = allCountries.filter(country => {
+                const nameMatch = country.name.toLowerCase().includes(searchTerm);
+                const codeMatch = country.code.replace('+', '').includes(searchTerm.replace(/\+/g, ''));
+                const displayMatch = country.display.toLowerCase().includes(searchTerm);
+                const codeWithoutPlus = country.code.replace('+', '');
+                const searchWithoutPlus = searchTerm.replace(/\+/g, '');
+                
+                return nameMatch || codeMatch || displayMatch || codeWithoutPlus.startsWith(searchWithoutPlus);
+            });
+            
+            if (filtered.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.style.padding = '15px 12px';
+                noResults.style.color = '#999';
+                noResults.style.textAlign = 'center';
+                noResults.innerHTML = '🔍 No countries found<br><small style="font-size: 11px;">Try searching by country name or code</small>';
+                dropdown.appendChild(noResults);
+                return;
+            }
+            
+            // Sort by relevance
+            filtered.sort((a, b) => {
+                const aName = a.name.toLowerCase();
+                const bName = b.name.toLowerCase();
+                const aCode = a.code.replace('+', '');
+                const bCode = b.code.replace('+', '');
+                const search = searchTerm.replace(/\+/g, '');
+                
+                const aStarts = aName.startsWith(search) || aCode.startsWith(search) ? 1 : 0;
+                const bStarts = bName.startsWith(search) || bCode.startsWith(search) ? 1 : 0;
+                
+                return bStarts - aStarts;
+            });
+            
+            displayCountries(filtered.slice(0, 50), dropdown, searchInput);
+        }
+
+        function displayCountries(countries, dropdown, searchInput) {
+            countries.forEach((country, index) => {
+                const div = document.createElement('div');
+                div.className = 'country-option';
+                div.style.padding = '12px 15px';
+                div.style.cursor = 'pointer';
+                div.style.borderBottom = '1px solid #eee';
+                div.style.transition = 'background 0.2s';
+                div.setAttribute('data-index', index);
+                
+                let displayText = country.display;
+                const searchTerm = searchInput.value.toLowerCase();
+                if (searchTerm) {
+                    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                    displayText = country.display.replace(regex, '<mark style="background: #fff3cd; padding: 2px 0;">$1</mark>');
+                }
+                div.innerHTML = displayText;
+                
+                div.addEventListener('mouseenter', function() {
+                    this.style.background = '#f0f4ff';
+                    selectedCountryIndex = index;
+                    updateSelectedCountry();
+                });
+                div.addEventListener('mouseleave', function() {
+                    this.style.background = 'white';
+                });
+                
+                div.addEventListener('click', function() {
+                    selectCountry(country);
+                });
+                
+                dropdown.appendChild(div);
+            });
+            
+            updateSelectedCountry();
+        }
+
+        function selectCountry(country) {
+            const countrySelect = document.getElementById('country_code');
+            const searchInput = document.getElementById('country_code_search');
+            const phoneInput = document.getElementById('guest_phone');
+            const dropdown = document.getElementById('country_dropdown');
+            
+            countrySelect.value = country.code;
+            searchInput.value = country.display;
+            dropdown.style.display = 'none';
+            
+            if (typeof getPhonePlaceholder === 'function') {
+                phoneInput.placeholder = getPhonePlaceholder(country.code);
+            }
+            
+            validatePhoneNumber();
+        }
+
+        function updateSelectedCountry() {
+            const options = document.querySelectorAll('.country-option');
+            options.forEach((opt, idx) => {
+                if (idx === selectedCountryIndex) {
+                    opt.style.background = '#e3f2fd';
+                    opt.style.borderLeft = '3px solid #667eea';
+                } else {
+                    opt.style.background = opt.style.background === 'rgb(240, 244, 255)' ? '#f0f4ff' : 'white';
+                    opt.style.borderLeft = 'none';
+                }
+            });
+        }
+
+        function handleCountrySearchKeydown(event) {
+            const dropdown = document.getElementById('country_dropdown');
+            const options = document.querySelectorAll('.country-option');
+            
+            if (!dropdown || dropdown.style.display === 'none' || options.length === 0) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    showCountryDropdown();
+                }
+                return;
+            }
+            
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                selectedCountryIndex = Math.min(selectedCountryIndex + 1, options.length - 1);
+                updateSelectedCountry();
+                options[selectedCountryIndex]?.scrollIntoView({ block: 'nearest' });
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                selectedCountryIndex = Math.max(selectedCountryIndex - 1, -1);
+                updateSelectedCountry();
+                if (selectedCountryIndex >= 0) {
+                    options[selectedCountryIndex]?.scrollIntoView({ block: 'nearest' });
+                }
+            } else if (event.key === 'Enter' && selectedCountryIndex >= 0) {
+                event.preventDefault();
+                const selectedOption = options[selectedCountryIndex];
+                if (selectedOption) {
+                    const countryCode = document.getElementById('country_code').options[Array.from(options).indexOf(selectedOption) + 1]?.value;
+                    if (countryCode && typeof getAllCountries === 'function') {
+                        const country = allCountries.find(c => c.code === countryCode);
+                        if (country) {
+                            selectCountry(country);
+                        }
+                    }
+                }
+            } else if (event.key === 'Escape') {
+                dropdown.style.display = 'none';
+                selectedCountryIndex = -1;
+            }
+        }
+
+        function updateCountryDisplay() {
+            const countrySelect = document.getElementById('country_code');
+            const searchInput = document.getElementById('country_code_search');
+            const phoneInput = document.getElementById('guest_phone');
+            
+            if (!countrySelect || !searchInput) return;
+            
+            const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+            if (selectedOption) {
+                searchInput.value = selectedOption.getAttribute('data-display') || selectedOption.text;
+                
+                if (typeof getPhonePlaceholder === 'function') {
+                    phoneInput.placeholder = getPhonePlaceholder(selectedOption.value);
+                }
+            }
+            
+            validatePhoneNumber();
+        }
+
+        function validatePhoneNumber() {
+            const countrySelect = document.getElementById('country_code');
+            const phoneInput = document.getElementById('guest_phone');
+            const messageDiv = document.getElementById('phone_validation_message');
+            
+            if (!countrySelect || !phoneInput || !messageDiv) return;
+            
+            const countryCode = countrySelect.value;
+            const phoneNumber = phoneInput.value;
+            
+            if (!phoneNumber) {
+                messageDiv.innerHTML = '';
+                phoneInput.style.borderColor = '#e0e0e0';
+                return;
+            }
+            
+            if (typeof window.validatePhoneNumber === 'function') {
+                const result = window.validatePhoneNumber(countryCode, phoneNumber);
+                
+                if (result.valid) {
+                    messageDiv.innerHTML = '<span style="color: #28a745;">✓ Valid phone number</span>';
+                    phoneInput.style.borderColor = '#28a745';
+                } else {
+                    messageDiv.innerHTML = '<span style="color: #dc3545;">✗ ' + result.message + '</span>';
+                    phoneInput.style.borderColor = '#dc3545';
+                }
+            } else {
+                const digits = phoneNumber.replace(/\D/g, '');
+                if (digits.length < 5) {
+                    messageDiv.innerHTML = '<span style="color: #dc3545;">✗ Phone number too short</span>';
+                    phoneInput.style.borderColor = '#dc3545';
+                } else if (digits.length > 15) {
+                    messageDiv.innerHTML = '<span style="color: #dc3545;">✗ Phone number too long</span>';
+                    phoneInput.style.borderColor = '#dc3545';
+                } else {
+                    messageDiv.innerHTML = '<span style="color: #28a745;">✓ Phone number looks valid</span>';
+                    phoneInput.style.borderColor = '#28a745';
+                }
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCountryDropdown();
+            
+            const phoneInput = document.getElementById('guest_phone');
+            if (phoneInput) {
+                phoneInput.addEventListener('input', validatePhoneNumber);
+            }
+        });
     </script>
 </body>
 </html>

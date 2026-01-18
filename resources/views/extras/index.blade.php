@@ -74,10 +74,33 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">All Products</h2>
-    @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
-        <a href="{{ route('extras.create') }}" class="btn btn-primary">Add Product</a>
-    @endif
+    <div style="display: flex; gap: 10px;">
+        @if(isset($deletedCount) && $deletedCount > 0 && !($showDeleted ?? false))
+            <a href="{{ route('extras.index', ['show_deleted' => 1] + request()->except('show_deleted')) }}" 
+               class="btn" 
+               style="background: #ff9800; color: white;">
+                View Deleted ({{ $deletedCount }})
+            </a>
+        @endif
+        @if($showDeleted ?? false)
+            <a href="{{ route('extras.index', request()->except('show_deleted')) }}" 
+               class="btn" 
+               style="background: #95a5a6; color: white;">
+                View Active Products
+            </a>
+        @endif
+        @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+            <a href="{{ route('extras.create') }}" class="btn btn-primary">Add Product</a>
+        @endif
+    </div>
 </div>
+
+@if($showDeleted ?? false)
+    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+        <strong style="color: #856404;">⚠️ Viewing Deleted Products</strong>
+        <p style="color: #856404; margin: 5px 0 0 0; font-size: 14px;">These products have been soft-deleted and can be restored or permanently deleted.</p>
+    </div>
+@endif
 
 @if(isset($isSuperAdmin) && $isSuperAdmin && isset($hotels) && $hotels->count() > 0)
     <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
@@ -132,7 +155,7 @@
                 </thead>
                 <tbody>
                     @forelse($extras as $extra)
-                        <tr>
+                        <tr style="{{ ($showDeleted ?? false) && $extra->trashed() ? 'opacity: 0.7; background-color: #f8f9fa;' : '' }}">
                             @if(isset($isSuperAdmin) && $isSuperAdmin)
                             <td>
                                 <strong style="color: #667eea;">{{ $extra->hotel->name ?? 'Unknown Hotel' }}</strong>
@@ -224,6 +247,7 @@
             @csrf
             <input type="hidden" id="stock_product_id" name="product_id" value="">
             <input type="hidden" name="type" value="in">
+            <input type="hidden" name="return_to" value="extras">
             
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 8px; font-weight: 500;">Product</label>
@@ -237,8 +261,11 @@
             
             <div style="margin-bottom: 20px;">
                 <label for="stock_quantity" style="display: block; margin-bottom: 8px; font-weight: 500;">Quantity to Add *</label>
-                <input type="number" id="stock_quantity" name="quantity" value="1" min="1" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <input type="number" id="stock_quantity" name="quantity" value="1" min="1" step="1" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;" oninput="updateStockPreview()">
                 <small style="color: #666; display: block; margin-top: 5px;" id="stock_unit_display"></small>
+                <div id="new_stock_preview" style="margin-top: 8px; padding: 8px; background: #e8f5e9; border-radius: 6px; font-size: 13px; color: #2e7d32; display: none;">
+                    <strong>New Stock Balance:</strong> <span id="new_stock_value"></span>
+                </div>
             </div>
             
             <div style="margin-bottom: 20px;">
@@ -255,7 +282,12 @@
 </div>
 
 <script>
+    let currentStockValue = 0;
+    let currentUnit = '';
+
     function showAddStockModal(productId, productName, currentStock, unit) {
+        currentStockValue = currentStock;
+        currentUnit = unit;
         document.getElementById('stock_product_id').value = productId;
         document.getElementById('stock_product_name').textContent = productName;
         document.getElementById('stock_current_stock').textContent = currentStock + ' ' + unit;
@@ -263,6 +295,21 @@
         document.getElementById('stock_quantity').value = 1;
         document.getElementById('stock_notes').value = '';
         document.getElementById('addStockModal').style.display = 'flex';
+        updateStockPreview();
+    }
+
+    function updateStockPreview() {
+        const quantity = parseInt(document.getElementById('stock_quantity').value) || 0;
+        const newStock = currentStockValue + quantity;
+        const previewDiv = document.getElementById('new_stock_preview');
+        const previewValue = document.getElementById('new_stock_value');
+        
+        if (quantity > 0) {
+            previewValue.textContent = newStock + ' ' + currentUnit;
+            previewDiv.style.display = 'block';
+        } else {
+            previewDiv.style.display = 'none';
+        }
     }
 
     function closeAddStockModal() {
@@ -270,9 +317,14 @@
     }
 
     // Close modal when clicking outside
-    document.getElementById('addStockModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeAddStockModal();
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('addStockModal');
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeAddStockModal();
+                }
+            });
         }
     });
 </script>

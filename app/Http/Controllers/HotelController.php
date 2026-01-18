@@ -67,8 +67,17 @@ class HotelController extends Controller
 
         $hotel = Hotel::create($validated);
         
+        // Seed permissions and roles for this new hotel
+        $permissionsSeeder = new \Database\Seeders\PermissionsSeeder();
+        $permissionsSeeder->run($hotel->id);
+        
+        $rolesSeeder = new \Database\Seeders\RolesSeeder();
+        $rolesSeeder->run($hotel->id);
+        
         // Automatically assign admin role to the owner for this hotel
-        $adminRole = \App\Models\Role::where('slug', 'admin')->first();
+        $adminRole = \App\Models\Role::where('slug', 'admin')
+            ->where('hotel_id', $hotel->id)
+            ->first();
         $owner = null;
         if ($adminRole) {
             $owner = \App\Models\User::findOrFail($validated['owner_id']);
@@ -215,6 +224,13 @@ class HotelController extends Controller
     public function destroy(Hotel $hotel)
     {
         $this->ensureSuperAdmin();
+        
+        // Prevent owners from deleting their own hotel
+        $user = auth()->user();
+        if ($hotel->owner_id === $user->id) {
+            return redirect()->route('hotels.index')
+                ->with('error', 'Hotel owners cannot delete their own hotel. Please contact a super admin.');
+        }
         
         // With soft deletes, we can still delete hotels with rooms/bookings
         // but we'll show a warning message

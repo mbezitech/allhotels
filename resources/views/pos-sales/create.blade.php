@@ -152,13 +152,30 @@
 
                     <div class="form-group">
                         <label for="room_id">Room (Optional)</label>
-                        <select id="room_id" name="room_id">
+                        <select id="room_id" name="room_id" onchange="updateBookings()">
                             <option value="">-- No Room --</option>
                             @foreach($rooms as $room)
                                 <option value="{{ $room->id }}">{{ $room->room_number }}</option>
                             @endforeach
                         </select>
                     </div>
+                </div>
+
+                <div class="form-group" id="booking_group">
+                    <label for="booking_id">Attach to Guest Booking (Optional)</label>
+                    <select id="booking_id" name="booking_id">
+                        <option value="">-- No Booking --</option>
+                        @foreach($activeBookings as $booking)
+                            <option value="{{ $booking->id }}" data-room-id="{{ $booking->room_id }}">
+                                {{ $booking->guest_name }} - Room {{ $booking->room->room_number }} 
+                                ({{ ucfirst($booking->status) }} | Check-in: {{ $booking->check_in->format('M d, Y') }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Select a booking to attach this charge to the guest's room bill. Charges will be included in checkout balance. 
+                        <span id="booking_filter_hint" style="color: #999; font-style: italic;"></span>
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -218,16 +235,19 @@
                 <h2>Cart Summary</h2>
                 <div id="cartItems"></div>
                 <div class="cart-total">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                        <strong>Subtotal:</strong>
-                        <span id="subtotal">$0.00</span>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #dee2e6;">
+                        <strong style="font-size: 16px;">Subtotal:</strong>
+                        <span id="subtotal" style="font-size: 16px; font-weight: 600;">$0.00</span>
                     </div>
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <label for="discount">Discount ($)</label>
-                        <input type="number" id="discount" name="discount" value="0" step="0.01" min="0" onchange="updateCart()" placeholder="0.00">
-                        <small style="color: #666;">Enter discount amount in dollars</small>
+                    <div class="form-group" style="margin-bottom: 15px; margin-top: 15px;">
+                        <label for="discount" style="font-weight: 500;">Discount ($)</label>
+                        <input type="number" id="discount" name="discount" value="0" step="0.01" min="0" oninput="updateCart()" onchange="updateCart()" placeholder="0.00" style="width: 100%;">
+                        <small style="color: #666; display: block; margin-top: 5px;">Enter discount amount in dollars</small>
+                        <div id="discount-warning" style="display: none; color: #dc3545; font-size: 12px; margin-top: 5px;">
+                            ⚠️ Discount cannot exceed subtotal
+                        </div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold;">
+                    <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; padding-top: 15px; border-top: 2px solid #667eea; margin-top: 10px; color: #667eea;">
                         <span>Total:</span>
                         <span id="total">$0.00</span>
                     </div>
@@ -275,8 +295,9 @@
                 if (quantity > 0) {
                     const extraId = qty.dataset.extraId;
                     const price = parseFloat(qty.dataset.price);
-                    const unitPriceEl = document.querySelector(`.unit-price-${extraId}`);
-                    const extraName = qty.closest('.extra-item').querySelector('strong').textContent;
+                    const extraItem = qty.closest('.extra-item');
+                    const extraNameEl = extraItem.querySelector('.extra-item-name');
+                    const extraName = extraNameEl ? extraNameEl.textContent.trim() : 'Item #' + extraId;
                     
                     const itemTotal = quantity * price;
                     subtotal += itemTotal;
@@ -306,10 +327,26 @@
             }
 
             const discount = parseFloat(discountEl.value) || 0;
-            const total = subtotal - discount;
+            const total = Math.max(0, subtotal - discount);
+            const discountWarning = document.getElementById('discount-warning');
 
             subtotalEl.textContent = '$' + subtotal.toFixed(2);
             totalEl.textContent = '$' + total.toFixed(2);
+            
+            // Update discount display if it exceeds subtotal
+            if (discount > subtotal && subtotal > 0) {
+                discountEl.style.borderColor = '#dc3545';
+                discountEl.style.backgroundColor = '#fff5f5';
+                if (discountWarning) {
+                    discountWarning.style.display = 'block';
+                }
+            } else {
+                discountEl.style.borderColor = '#e0e0e0';
+                discountEl.style.backgroundColor = 'white';
+                if (discountWarning) {
+                    discountWarning.style.display = 'none';
+                }
+            }
         }
 
         // Filter out items with quantity 0 before submit
@@ -336,6 +373,34 @@
         });
 
         updateCart();
+
+        // Update bookings dropdown when room changes
+        function updateBookings() {
+            const roomId = document.getElementById('room_id').value;
+            const bookingSelect = document.getElementById('booking_id');
+            const bookingGroup = document.getElementById('booking_group');
+            
+            if (roomId) {
+                bookingGroup.style.display = 'block';
+                // Filter bookings by selected room
+                const options = bookingSelect.querySelectorAll('option');
+                options.forEach(option => {
+                    if (option.value === '') {
+                        option.style.display = 'block';
+                    } else {
+                        const optionRoomId = option.getAttribute('data-room-id');
+                        if (optionRoomId === roomId) {
+                            option.style.display = 'block';
+                        } else {
+                            option.style.display = 'none';
+                        }
+                    }
+                });
+            } else {
+                bookingGroup.style.display = 'none';
+                bookingSelect.value = '';
+            }
+        }
     </script>
 @endpush
 @endsection

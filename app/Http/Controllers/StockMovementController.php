@@ -128,16 +128,48 @@ class StockMovementController extends Controller
             return back()->withErrors(['product_id' => 'Stock tracking is not enabled for this product.'])->withInput();
         }
 
-        StockMovement::create([
+        $movement = StockMovement::create([
             'hotel_id' => $taskHotelId,
             'product_id' => $validated['product_id'],
             'type' => $validated['type'],
             'quantity' => $validated['quantity'],
             'reference_type' => 'manual',
             'reference_id' => null,
-            'notes' => $validated['notes'] ?? null,
+            'notes' => isset($validated['notes']) ? $validated['notes'] : null,
             'created_by' => Auth::id(),
         ]);
+
+        // Log activity
+        $action = $validated['type'] === 'in' ? 'stock_added' : 'stock_removed';
+        $unit = $product->unit ? $product->unit : 'units';
+        $quantity = $validated['quantity'];
+        $productName = $product->name;
+        
+        $description = $validated['type'] === 'in' 
+            ? "Added {$quantity} {$unit} of stock for {$productName}"
+            : "Removed {$quantity} {$unit} of stock for {$productName}";
+        
+        $notes = isset($validated['notes']) ? $validated['notes'] : null;
+        
+        logActivity($action, $product, $description, [
+            'product_id' => $product->id,
+            'product_name' => $productName,
+            'movement_type' => $validated['type'],
+            'quantity' => $quantity,
+            'notes' => $notes,
+            'new_stock_balance' => $product->getStockBalance($taskHotelId),
+        ]);
+
+        // Determine redirect based on where the request came from
+        if ($request->has('return_to') && $request->get('return_to') === 'extras') {
+            $newBalance = $product->getStockBalance($taskHotelId);
+            $successMessage = $validated['type'] === 'in' 
+                ? "Stock added successfully. New balance: {$newBalance} {$unit}"
+                : "Stock removed successfully. New balance: {$newBalance} {$unit}";
+            
+            return redirect()->route('extras.index')
+                ->with('success', $successMessage);
+        }
 
         return redirect()->route('stock-movements.index')
             ->with('success', 'Stock movement recorded successfully.');

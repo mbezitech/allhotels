@@ -76,6 +76,20 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">All Expenses</h2>
     <div style="display: flex; gap: 10px;">
+        @if(isset($deletedCount) && $deletedCount > 0 && !($showDeleted ?? false))
+            <a href="{{ route('expenses.index', ['show_deleted' => 1] + request()->except('show_deleted')) }}" 
+               class="btn" 
+               style="background: #ff9800; color: white;">
+                View Deleted ({{ $deletedCount }})
+            </a>
+        @endif
+        @if($showDeleted ?? false)
+            <a href="{{ route('expenses.index', request()->except('show_deleted')) }}" 
+               class="btn" 
+               style="background: #95a5a6; color: white;">
+                View Active Expenses
+            </a>
+        @endif
         @if(auth()->user()->hasPermission('expenses.create', session('hotel_id')) || auth()->user()->isSuperAdmin())
             <a href="{{ route('expenses.create') }}" class="btn btn-primary">Add Expense</a>
         @endif
@@ -84,6 +98,13 @@
         @endif
     </div>
 </div>
+
+@if($showDeleted ?? false)
+    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+        <strong style="color: #856404;">⚠️ Viewing Deleted Expenses</strong>
+        <p style="color: #856404; margin: 5px 0 0 0; font-size: 14px;">These expenses have been soft-deleted and can be restored or permanently deleted.</p>
+    </div>
+@endif
 
 @if(session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>
@@ -216,7 +237,7 @@
             </thead>
             <tbody>
                 @foreach($expenses as $expense)
-                    <tr>
+                    <tr style="{{ ($showDeleted ?? false) && $expense->trashed() ? 'opacity: 0.7; background-color: #f8f9fa;' : '' }}">
                         @if(isset($isSuperAdmin) && $isSuperAdmin)
                             <td>{{ $expense->hotel->name ?? 'N/A' }}</td>
                         @endif
@@ -243,12 +264,28 @@
                                 @if(auth()->user()->hasPermission('expenses.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
                                     <a href="{{ route('expenses.edit', $expense) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
                                 @endif
-                                @if(auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
-                                    <form action="{{ route('expenses.destroy', $expense) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this expense?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Delete</button>
-                                    </form>
+                                @if($showDeleted ?? false)
+                                    {{-- Show restore and force delete for deleted expenses --}}
+                                    @if(auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                        <form action="{{ route('expenses.restore', $expense->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this expense?')">
+                                            @csrf
+                                            <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
+                                        </form>
+                                        <form action="{{ route('expenses.forceDelete', $expense->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('⚠️ WARNING: This will permanently delete this expense. This action cannot be undone. Are you absolutely sure?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Permanently Delete</button>
+                                        </form>
+                                    @endif
+                                @else
+                                    {{-- Show regular delete for active expenses --}}
+                                    @if(auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                        <form action="{{ route('expenses.destroy', $expense) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this expense?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+                                        </form>
+                                    @endif
                                 @endif
                             </div>
                         </td>

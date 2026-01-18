@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Hotel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class TaskController extends Controller
 {
@@ -77,7 +78,8 @@ class TaskController extends Controller
         // If super admin and no hotel selected, show all rooms
         $rooms = $roomsQuery->orderBy('room_number')->get();
         
-        $users = User::all();
+        // Only show users who belong to the selected hotel
+        $users = $this->getUsersForHotel($selectedHotelId ?: $hotelId);
         
         // Get all hotels for super admin filter
         $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
@@ -110,7 +112,8 @@ class TaskController extends Controller
         // If super admin and no hotel selected, show all rooms
         $rooms = $roomsQuery->orderBy('room_number')->get();
         
-        $users = User::all();
+        // Only show users who belong to the current hotel
+        $users = $this->getUsersForHotel($selectedHotelId ?: $hotelId);
         
         // Pre-select room if provided
         $roomId = $request->get('room_id');
@@ -150,11 +153,14 @@ class TaskController extends Controller
         }
 
         // Verify booking belongs to hotel if provided (unless super admin)
-        if ($validated['booking_id']) {
+        if (isset($validated['booking_id']) && $validated['booking_id']) {
             $booking = Booking::findOrFail($validated['booking_id']);
             if (!auth()->user()->isSuperAdmin() && $booking->hotel_id != $hotelId) {
                 abort(403, 'Unauthorized access to this booking.');
             }
+        } else {
+            // Ensure booking_id is null if not provided
+            $validated['booking_id'] = null;
         }
 
         // For super admins, use hotel_id from request if provided, otherwise use session
@@ -208,7 +214,8 @@ class TaskController extends Controller
         }
         $rooms = $roomsQuery->orderBy('room_number')->get();
         
-        $users = User::all();
+        // Only show users who belong to the task's hotel
+        $users = $this->getUsersForHotel($task->hotel_id);
         return view('tasks.edit', compact('task', 'rooms', 'users'));
     }
 
@@ -315,5 +322,46 @@ class TaskController extends Controller
         if ($task->hotel_id != session('hotel_id')) {
             abort(403, 'Unauthorized access to this task.');
         }
+    }
+    
+    /**
+     * Get users who belong to a specific hotel
+     * Users belong to a hotel if they have roles in that hotel or are the hotel owner
+     */
+    private function getUsersForHotel(?int $hotelId)
+    {
+        if (!$hotelId) {
+            return collect();
+        }
+        
+        $hotel = Hotel::find($hotelId);
+        if (!$hotel) {
+            return collect();
+        }
+        
+        $hotelOwnerId = $hotel->owner_id;
+        
+        // Get users who have roles in this hotel
+        $userIds = DB::table('user_roles')
+            ->where('hotel_id', $hotelId)
+            ->distinct()
+            ->pluck('user_id')
+            ->toArray();
+        
+        // Include hotel owner if they exist
+        if ($hotelOwnerId) {
+            $userIds[] = $hotelOwnerId;
+        }
+        
+        $userIds = array_unique($userIds);
+        
+        if (empty($userIds)) {
+            return collect();
+        }
+        
+        return User::whereIn('id', $userIds)
+            ->where('is_super_admin', false)
+            ->orderBy('name')
+            ->get();
     }
 }

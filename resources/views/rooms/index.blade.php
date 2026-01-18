@@ -144,10 +144,11 @@
         <tbody>
             @forelse($rooms as $room)
                 @php
+                    $isDeleted = ($showDeleted ?? false) && $room->trashed();
                     $roomHotel = $room->hotel ?? $hotel ?? null;
                     $bookingUrl = $roomHotel ? url('/book/' . $roomHotel->slug . '/' . $room->id) : '#';
                 @endphp
-                <tr>
+                <tr style="{{ $isDeleted ? 'opacity: 0.7; background-color: #f8f9fa;' : '' }}">
                     @if(isset($isSuperAdmin) && $isSuperAdmin)
                     <td>
                         <strong style="color: #667eea;">{{ $room->hotel->name ?? 'Unknown Hotel' }}</strong>
@@ -191,12 +192,28 @@
                         @if(auth()->user()->hasPermission('rooms.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
                             <a href="{{ route('rooms.edit', $room) }}" class="btn btn-edit">Edit</a>
                         @endif
-                        @if(auth()->user()->hasPermission('rooms.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
-                            <form action="{{ route('rooms.destroy', $room) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this room? This action cannot be undone.')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">Delete</button>
-                            </form>
+                        @if($showDeleted ?? false)
+                            {{-- Show restore and force delete for deleted rooms --}}
+                            @if(auth()->user()->hasPermission('rooms.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                <form action="{{ route('rooms.restore', $room->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this room?')">
+                                    @csrf
+                                    <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
+                                </form>
+                                <form action="{{ route('rooms.forceDelete', $room->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('⚠️ WARNING: This will permanently delete this room. This action cannot be undone. Are you absolutely sure?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Permanently Delete</button>
+                                </form>
+                            @endif
+                        @else
+                            {{-- Show regular delete for active rooms --}}
+                            @if(auth()->user()->hasPermission('rooms.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                <form action="{{ route('rooms.destroy', $room) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this room? This action cannot be undone.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            @endif
                         @endif
                     </td>
                 </tr>

@@ -18,8 +18,16 @@ class ExpenseController extends Controller
         $hotelId = session('hotel_id');
         $isSuperAdmin = auth()->user()->isSuperAdmin();
         
+        // Check if showing deleted expenses
+        $showDeleted = $request->has('show_deleted') && $request->show_deleted == '1';
+        
         // Super admins can see all expenses, others only their hotel
         $query = Expense::query();
+        
+        if ($showDeleted) {
+            $query->withTrashed();
+        }
+        
         if (!$isSuperAdmin) {
             $query->where('hotel_id', $hotelId);
         }
@@ -85,7 +93,18 @@ class ExpenseController extends Controller
                 ->get()
             : collect();
 
-        return view('expenses.index', compact('expenses', 'hotels', 'categories', 'isSuperAdmin'));
+        // Count deleted expenses
+        $deletedCount = 0;
+        $deletedQuery = Expense::onlyTrashed();
+        if (!$isSuperAdmin) {
+            $deletedQuery->where('hotel_id', $hotelId);
+        }
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $deletedQuery->where('hotel_id', $request->hotel_id);
+        }
+        $deletedCount = $deletedQuery->count();
+
+        return view('expenses.index', compact('expenses', 'hotels', 'categories', 'isSuperAdmin', 'showDeleted', 'deletedCount'));
     }
 
     /**
@@ -106,6 +125,12 @@ class ExpenseController extends Controller
             return redirect()->route('expenses.index')
                 ->with('error', 'Please select a hotel to add expenses.');
         }
+        
+        // Log access to expense creation form
+        logActivity('create_form_accessed', null, "Accessed expense creation form", [
+            'user_id' => auth()->id(),
+            'hotel_id' => $hotelId,
+        ]);
         
         $categories = ExpenseCategory::where('hotel_id', $hotelId)
             ->where('is_active', true)
@@ -166,6 +191,13 @@ class ExpenseController extends Controller
     {
         $this->authorizeHotel($expense);
         
+        // Log expense viewing
+        logActivity('viewed', $expense, "Viewed expense: {$expense->description} - $" . number_format($expense->amount, 2), [
+            'expense_id' => $expense->id,
+            'amount' => $expense->amount,
+            'category' => $expense->category ? $expense->category->name : 'N/A',
+        ]);
+        
         $expense->load(['category', 'addedBy', 'hotel']);
         
         return view('expenses.show', compact('expense'));
@@ -177,6 +209,12 @@ class ExpenseController extends Controller
     public function edit(Expense $expense)
     {
         $this->authorizeHotel($expense);
+        
+        // Log expense edit form access
+        logActivity('edit_form_accessed', $expense, "Accessed edit form for expense: {$expense->description}", [
+            'expense_id' => $expense->id,
+            'amount' => $expense->amount,
+        ]);
         
         $hotelId = session('hotel_id');
         $categories = ExpenseCategory::where('hotel_id', $hotelId)
@@ -240,22 +278,82 @@ class ExpenseController extends Controller
     {
         $this->authorizeHotel($expense);
         
-        $description = $expense->description;
-        $amount = $expense->amount;
-        $expenseId = $expense->id;
+        // Capture expense details before deletion
+        $expenseDetails = [
+            'expense_id' => $expense->id,
+            'description' => $expense->description,
+            'amount' => $expense->amount,
+            'expense_date' => $expense->expense_date ? $expense->expense_date->format('Y-m-d') : null,
+            'category' => $expense->category ? $expense->category->name : 'N/A',
+            'payment_method' => $expense->payment_method,
+        ];
         
         // Delete attachment if exists
         if ($expense->attachment) {
             Storage::disk('public')->delete($expense->attachment);
         }
         
+        // Soft delete the expense
         $expense->delete();
 
         // Log activity
-        logActivity('deleted', null, "Deleted expense: {$description} - $" . number_format($amount, 2), ['expense_id' => $expenseId]);
+        logActivity('deleted', $expense, "Deleted expense: {$expenseDetails['description']} - $" . number_format($expenseDetails['amount'], 2), $expenseDetails);
 
         return redirect()->route('expenses.index')
             ->with('success', 'Expense deleted successfully.');
+    }
+
+    /**
+     * Restore a soft-deleted expense
+     */
+    public function restore($id)
+    {
+        $expense = Expense::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($expense);
+
+        $expense->restore();
+
+        // Log the restoration
+        logActivity('restored', $expense, "Restored expense: {$expense->description} - $" . number_format($expense->amount, 2), [
+            'expense_id' => $expense->id,
+            'amount' => $expense->amount,
+        ]);
+
+        return redirect()->route('expenses.index')
+            ->with('success', 'Expense restored successfully.');
+    }
+
+    /**
+     * Permanently delete an expense
+     */
+    public function forceDelete($id)
+    {
+        $expense = Expense::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($expense);
+
+        // Capture expense details before permanent deletion
+        $expenseDetails = [
+            'expense_id' => $expense->id,
+            'description' => $expense->description,
+            'amount' => $expense->amount,
+            'expense_date' => $expense->expense_date ? $expense->expense_date->format('Y-m-d') : null,
+            'category' => $expense->category ? $expense->category->name : 'N/A',
+            'payment_method' => $expense->payment_method,
+        ];
+        
+        // Delete attachment if exists
+        if ($expense->attachment) {
+            Storage::disk('public')->delete($expense->attachment);
+        }
+
+        // Permanently delete the expense
+        $expense->forceDelete();
+
+        // Log the permanent deletion
+        logActivity('force_deleted', null, "Permanently deleted expense: {$expenseDetails['description']} - $" . number_format($expenseDetails['amount'], 2), $expenseDetails);
+
+        return redirect()->route('expenses.index')
+            ->with('success', 'Expense permanently deleted.');
     }
 
     /**

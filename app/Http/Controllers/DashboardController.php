@@ -53,13 +53,16 @@ class DashboardController extends Controller
             // Count bookings scheduled to check in today
             $todayCheckIns = Booking::whereDate('check_in', $today)->count();
             
-            // Count bookings that were actually checked out today (status = checked_out and updated today)
+            // Count bookings that were actually checked out today
             // OR bookings scheduled to check out today that haven't been checked out yet
             $todayCheckOuts = Booking::where(function($query) use ($today) {
                 $query->where(function($q) use ($today) {
-                    // Bookings actually checked out today
+                    // Bookings actually checked out today (check updated_at date or check_out date)
                     $q->where('status', 'checked_out')
-                      ->whereDate('updated_at', $today);
+                      ->where(function($subQ) use ($today) {
+                          $subQ->whereDate('updated_at', $today)
+                               ->orWhereDate('check_out', $today);
+                      });
                 })->orWhere(function($q) use ($today) {
                     // Bookings scheduled to check out today but not yet checked out
                     $q->whereDate('check_out', $today)
@@ -222,14 +225,17 @@ class DashboardController extends Controller
                 ->whereDate('check_in', $today)
                 ->count();
             
-            // Count bookings that were actually checked out today (status = checked_out and updated today)
+            // Count bookings that were actually checked out today
             // OR bookings scheduled to check out today that haven't been checked out yet
             $todayCheckOuts = Booking::where('hotel_id', $hotelId)
                 ->where(function($query) use ($today) {
                     $query->where(function($q) use ($today) {
-                        // Bookings actually checked out today
+                        // Bookings actually checked out today (check updated_at date or check_out date)
                         $q->where('status', 'checked_out')
-                          ->whereDate('updated_at', $today);
+                          ->where(function($subQ) use ($today) {
+                              $subQ->whereDate('updated_at', $today)
+                                   ->orWhereDate('check_out', $today);
+                          });
                     })->orWhere(function($q) use ($today) {
                         // Bookings scheduled to check out today but not yet checked out
                         $q->whereDate('check_out', $today)

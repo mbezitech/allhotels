@@ -78,11 +78,18 @@
                             @else
                                 <a href="{{ route('hotels.show', $hotel) }}" style="padding: 6px 12px; background: #3498db; color: white; border-radius: 6px; text-decoration: none; font-size: 13px;">View</a>
                                 <a href="{{ route('hotels.edit', $hotel) }}" style="padding: 6px 12px; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 13px;">Edit</a>
-                                <form action="{{ route('hotels.destroy', $hotel) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this hotel? The hotel can be restored later.');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" style="padding: 6px 12px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Delete</button>
-                                </form>
+                                @php
+                                    $isOwner = $hotel->owner_id === auth()->id();
+                                @endphp
+                                @if(!$isOwner)
+                                    <form action="{{ route('hotels.destroy', $hotel) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this hotel? The hotel can be restored later.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" style="padding: 6px 12px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Delete</button>
+                                    </form>
+                                @else
+                                    <span style="color: #999; font-size: 12px; padding: 6px 12px;">Cannot delete own hotel</span>
+                                @endif
                             @endif
                         </div>
                     </td>

@@ -113,14 +113,35 @@ class Hotel extends Model
         
         static::creating(function ($hotel) {
             if (empty($hotel->slug)) {
-                $hotel->slug = Str::slug($hotel->name);
+                $hotel->slug = static::generateUniqueSlug($hotel->name);
             }
         });
         
         static::updating(function ($hotel) {
             if ($hotel->isDirty('name') && empty($hotel->slug)) {
-                $hotel->slug = Str::slug($hotel->name);
+                $hotel->slug = static::generateUniqueSlug($hotel->name, $hotel->id);
             }
         });
+    }
+
+    /**
+     * Generate a unique slug for the hotel
+     */
+    protected static function generateUniqueSlug(string $name, ?int $excludeId = null): string
+    {
+        $baseSlug = Str::slug($name);
+        $slug = $baseSlug;
+        $counter = 1;
+
+        while (static::where('slug', $slug)
+            ->when($excludeId, function ($query) use ($excludeId) {
+                $query->where('id', '!=', $excludeId);
+            })
+            ->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 }

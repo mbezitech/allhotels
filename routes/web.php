@@ -54,6 +54,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
     Route::put('/users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
+    Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
+    Route::delete('/users/{id}/force-delete', [UserController::class, 'forceDelete'])->name('users.forceDelete');
     
     // Profile Management (all authenticated users)
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
@@ -128,6 +130,8 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Rooms delete (requires rooms.delete permission)
     Route::middleware('permission:rooms.delete')->group(function () {
         Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('rooms.destroy');
+        Route::post('/rooms/{id}/restore', [RoomController::class, 'restore'])->name('rooms.restore');
+        Route::delete('/rooms/{id}/force-delete', [RoomController::class, 'forceDelete'])->name('rooms.forceDelete');
     });
     
     // Room Types Management
@@ -184,6 +188,8 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     
     Route::middleware('permission:bookings.delete')->group(function () {
         Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy');
+        Route::post('/bookings/{id}/restore', [BookingController::class, 'restore'])->name('bookings.restore');
+        Route::delete('/bookings/{id}/force-delete', [BookingController::class, 'forceDelete'])->name('bookings.forceDelete');
     });
     
     // Housekeeping Records Management
@@ -332,6 +338,8 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     
     Route::middleware('permission:extras.manage')->group(function () {
         Route::delete('/extras/{extra}', [ExtraController::class, 'destroy'])->name('extras.destroy');
+        Route::post('/extras/{id}/restore', [ExtraController::class, 'restore'])->name('extras.restore');
+        Route::delete('/extras/{id}/force-delete', [ExtraController::class, 'forceDelete'])->name('extras.forceDelete');
     });
     
     // POS Sales - Create route must come before parameterized routes to avoid route conflict
@@ -391,6 +399,8 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     
     Route::middleware('permission:payments.delete')->group(function () {
         Route::delete('/payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+        Route::post('/payments/{id}/restore', [PaymentController::class, 'restore'])->name('payments.restore');
+        Route::delete('/payments/{id}/force-delete', [PaymentController::class, 'forceDelete'])->name('payments.forceDelete');
     });
     
     // Reports (requires reports.view permission)
@@ -439,6 +449,8 @@ Route::middleware(['auth', 'hotel.context'])->group(function () {
     // Expenses delete (requires expenses.delete permission)
     Route::middleware('permission:expenses.delete')->group(function () {
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+        Route::post('/expenses/{id}/restore', [ExpenseController::class, 'restore'])->name('expenses.restore');
+        Route::delete('/expenses/{id}/force-delete', [ExpenseController::class, 'forceDelete'])->name('expenses.forceDelete');
     });
     
     // Expense Categories (requires expense_categories.view permission)

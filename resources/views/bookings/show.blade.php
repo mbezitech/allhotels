@@ -126,14 +126,43 @@
         <span class="info-value">${{ number_format($booking->total_amount, 2) }}</span>
     </div>
 
+    @if(($booking->discount ?? 0) > 0)
+    <div class="info-row">
+        <span class="info-label">Discount:</span>
+        <span class="info-value" style="color: #e74c3c;">-${{ number_format($booking->discount, 2) }}</span>
+    </div>
+    @endif
+
+    <div class="info-row" style="border-top: 2px solid #667eea; padding-top: 15px; margin-top: 10px;">
+        <span class="info-label" style="font-size: 16px; font-weight: 700;">Final Amount:</span>
+        <span class="info-value" style="font-size: 18px; font-weight: 700; color: #667eea;">${{ number_format($booking->final_amount, 2) }}</span>
+    </div>
+
     <div class="info-row">
         <span class="info-label">Total Paid:</span>
         <span class="info-value">${{ number_format($booking->total_paid, 2) }}</span>
     </div>
 
-    <div class="info-row">
-        <span class="info-label">Outstanding Balance:</span>
-        <span class="info-value">
+    @php
+        $bookingBalance = max(0, $booking->final_amount - $booking->total_paid);
+        $posCharges = $booking->total_pos_charges;
+    @endphp
+
+    @if($posCharges > 0)
+    <div class="info-row" style="border-top: 2px solid #eee; padding-top: 15px; margin-top: 10px;">
+        <span class="info-label">POS Charges (Unpaid):</span>
+        <span class="info-value" style="color: #e74c3c; font-weight: 600;">
+            ${{ number_format($posCharges, 2) }}
+        </span>
+    </div>
+    <small style="color: #666; display: block; margin-top: 5px; margin-bottom: 10px;">
+        Unpaid charges from room service and other POS sales.
+    </small>
+    @endif
+
+    <div class="info-row" style="border-top: 2px solid #eee; padding-top: 15px; margin-top: 10px;">
+        <span class="info-label" style="font-weight: 700;">Total Outstanding Balance:</span>
+        <span class="info-value" style="font-weight: 700; color: {{ $booking->outstanding_balance > 0 ? '#e74c3c' : '#155724' }};">
             ${{ number_format($booking->outstanding_balance, 2) }}
             @if($booking->isFullyPaid())
                 <span class="badge badge-paid">Paid</span>
@@ -142,6 +171,13 @@
             @endif
         </span>
     </div>
+    <small style="color: #666; display: block; margin-top: 5px;">
+        @if($posCharges > 0)
+            Includes booking balance (${{ number_format($bookingBalance, 2) }}) and POS charges (${{ number_format($posCharges, 2) }}).
+        @else
+            Outstanding balance is calculated based on final amount (after discount).
+        @endif
+    </small>
 
     <div class="info-row">
         <span class="info-label">Booking Date/Time:</span>
@@ -205,6 +241,58 @@
     </div>
     @endif
 </div>
+
+@if($booking->posSales && $booking->posSales->count() > 0)
+<div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
+    <h3 style="color: #333; font-size: 20px; margin-bottom: 20px;">Room Charges (POS Sales)</h3>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 2px solid #eee;">
+                <th style="text-align: left; padding: 10px;">Date</th>
+                <th style="text-align: left; padding: 10px;">Reference</th>
+                <th style="text-align: left; padding: 10px;">Items</th>
+                <th style="text-align: right; padding: 10px;">Amount</th>
+                <th style="text-align: right; padding: 10px;">Paid</th>
+                <th style="text-align: right; padding: 10px;">Balance</th>
+                <th style="text-align: center; padding: 10px;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($booking->posSales as $posSale)
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;">{{ $posSale->sale_date->format('M d, Y') }}</td>
+                    <td style="padding: 10px;">
+                        <a href="{{ route('pos-sales.show', $posSale) }}" style="color: #667eea; text-decoration: none;">
+                            {{ $posSale->sale_reference }}
+                        </a>
+                    </td>
+                    <td style="padding: 10px;">
+                        @foreach($posSale->items as $item)
+                            <div style="font-size: 12px; color: #666;">
+                                {{ $item->quantity }}x {{ $item->extra->name }}
+                            </div>
+                        @endforeach
+                    </td>
+                    <td style="text-align: right; padding: 10px;">${{ number_format($posSale->final_amount, 2) }}</td>
+                    <td style="text-align: right; padding: 10px;">${{ number_format($posSale->total_paid, 2) }}</td>
+                    <td style="text-align: right; padding: 10px; color: {{ $posSale->outstanding_balance > 0 ? '#e74c3c' : '#155724' }}; font-weight: 600;">
+                        ${{ number_format($posSale->outstanding_balance, 2) }}
+                    </td>
+                    <td style="text-align: center; padding: 10px;">
+                        @if($posSale->payment_status === 'paid')
+                            <span class="badge badge-paid">Paid</span>
+                        @elseif($posSale->payment_status === 'partial')
+                            <span class="badge badge-partial">Partial</span>
+                        @else
+                            <span class="badge badge-pending">Pending</span>
+                        @endif
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+@endif
 
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">

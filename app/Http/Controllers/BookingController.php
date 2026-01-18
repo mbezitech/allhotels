@@ -19,8 +19,15 @@ class BookingController extends Controller
         $hotelId = session('hotel_id');
         $isSuperAdmin = auth()->user()->isSuperAdmin();
         
+        // Check if showing deleted bookings
+        $showDeleted = $request->has('show_deleted') && $request->show_deleted == '1';
+        
         // Super admins can see all bookings, others only their hotel
         $query = Booking::query();
+        if ($showDeleted) {
+            $query->withTrashed();
+        }
+        
         if (!$isSuperAdmin) {
             $query->where('hotel_id', $hotelId);
         }
@@ -105,7 +112,31 @@ class BookingController extends Controller
         // Get all hotels for super admin filter
         $hotels = $isSuperAdmin ? Hotel::orderBy('name')->get() : collect();
 
-        return view('bookings.index', compact('bookings', 'rooms', 'hotels', 'isSuperAdmin'));
+        // Count deleted bookings for the current hotel context
+        $deletedCount = 0;
+        if ($showDeleted) {
+            // When showing deleted, count only trashed
+            $deletedQuery = Booking::onlyTrashed();
+            if (!$isSuperAdmin) {
+                $deletedQuery->where('hotel_id', $hotelId);
+            }
+            if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+                $deletedQuery->where('hotel_id', $request->hotel_id);
+            }
+            $deletedCount = $deletedQuery->count();
+        } else {
+            // When showing active, count deleted separately
+            $deletedQuery = Booking::onlyTrashed();
+            if (!$isSuperAdmin) {
+                $deletedQuery->where('hotel_id', $hotelId);
+            }
+            if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+                $deletedQuery->where('hotel_id', $request->hotel_id);
+            }
+            $deletedCount = $deletedQuery->count();
+        }
+
+        return view('bookings.index', compact('bookings', 'rooms', 'hotels', 'isSuperAdmin', 'showDeleted', 'deletedCount'));
     }
 
     /**
@@ -113,6 +144,12 @@ class BookingController extends Controller
      */
     public function create()
     {
+        // Log access to booking creation form
+        logActivity('create_form_accessed', null, "Accessed booking creation form", [
+            'user_id' => auth()->id(),
+            'hotel_id' => session('hotel_id'),
+        ]);
+        
         $hotelId = session('hotel_id');
         $rooms = Room::where('hotel_id', $hotelId)
             ->where('status', 'available')
@@ -133,13 +170,24 @@ class BookingController extends Controller
             'guest_name' => 'required|string|max:255',
             'guest_email' => 'nullable|email|max:255',
             'guest_phone' => 'nullable|string|max:255',
+            'country_code' => 'nullable|string|max:10',
             'check_in' => 'required|date|after_or_equal:today',
             'check_out' => 'required|date|after:check_in',
             'adults' => 'required|integer|min:1',
             'children' => 'nullable|integer|min:0',
             'total_amount' => 'required|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
         ]);
+        
+        // Combine country code with phone number if both are provided
+        if (!empty($validated['country_code']) && !empty($validated['guest_phone'])) {
+            $validated['guest_phone'] = $validated['country_code'] . ' ' . $validated['guest_phone'];
+        } elseif (!empty($validated['country_code']) && empty($validated['guest_phone'])) {
+            // If only country code is provided, don't save it
+            unset($validated['country_code']);
+        }
+        unset($validated['country_code']); // Remove from validated as it's not a database field
 
         $hotelId = session('hotel_id');
         $room = Room::findOrFail($validated['room_id']);
@@ -169,6 +217,11 @@ class BookingController extends Controller
         $validated['status'] = 'confirmed';
         $validated['source'] = 'dashboard';
         $validated['created_by'] = auth()->id();
+        
+        // Calculate final amount (total_amount - discount)
+        $discount = $validated['discount'] ?? 0;
+        $validated['discount'] = $discount;
+        $validated['final_amount'] = max(0, $validated['total_amount'] - $discount);
 
         $booking = Booking::create($validated);
         logActivity('created', $booking, "Created booking for {$booking->guest_name} - Room {$booking->room->room_number}", [
@@ -188,8 +241,16 @@ class BookingController extends Controller
      */
     public function show(Booking $booking)
     {
-        // Route model binding already ensures booking belongs to current hotel
-        $booking->load('room', 'payments');
+        $this->authorizeHotel($booking);
+        
+        // Log booking viewing
+        logActivity('viewed', $booking, "Viewed booking #{$booking->id} - {$booking->guest_name}", [
+            'booking_reference' => $booking->booking_reference,
+            'guest_name' => $booking->guest_name,
+            'status' => $booking->status,
+        ]);
+        
+        $booking->load('room', 'payments', 'posSales.items.extra');
         
         return view('bookings.show', compact('booking'));
     }
@@ -200,6 +261,13 @@ class BookingController extends Controller
     public function edit(Booking $booking)
     {
         $this->authorizeHotel($booking);
+        
+        // Log booking edit form access
+        logActivity('edit_form_accessed', $booking, "Accessed edit form for booking #{$booking->id} - {$booking->guest_name}", [
+            'booking_reference' => $booking->booking_reference,
+            'guest_name' => $booking->guest_name,
+            'status' => $booking->status,
+        ]);
         
         $hotelId = session('hotel_id');
         $rooms = Room::where('hotel_id', $hotelId)
@@ -222,15 +290,26 @@ class BookingController extends Controller
             'guest_name' => 'required|string|max:255',
             'guest_email' => 'nullable|email|max:255',
             'guest_phone' => 'nullable|string|max:255',
+            'country_code' => 'nullable|string|max:10',
             'check_in' => 'required|date',
             'check_out' => 'required|date|after:check_in',
             'adults' => 'required|integer|min:1',
             'children' => 'nullable|integer|min:0',
             'total_amount' => 'required|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
             'status' => 'required|in:pending,confirmed,checked_in,checked_out,cancelled',
             'cancellation_reason' => 'required_if:status,cancelled|nullable|string|max:500',
             'notes' => 'nullable|string',
         ]);
+        
+        // Combine country code with phone number if both are provided
+        if (!empty($validated['country_code']) && !empty($validated['guest_phone'])) {
+            $validated['guest_phone'] = $validated['country_code'] . ' ' . $validated['guest_phone'];
+        } elseif (!empty($validated['country_code']) && empty($validated['guest_phone'])) {
+            // If only country code is provided, don't save it
+            unset($validated['country_code']);
+        }
+        unset($validated['country_code']); // Remove from validated as it's not a database field
 
         $room = Room::findOrFail($validated['room_id']);
 
@@ -250,9 +329,24 @@ class BookingController extends Controller
             ]);
         }
 
+        // Capture old values for logging
+        $oldValues = [
+            'room_id' => $booking->room_id,
+            'guest_name' => $booking->guest_name,
+            'guest_email' => $booking->guest_email,
+            'guest_phone' => $booking->guest_phone,
+            'check_in' => $booking->check_in ? $booking->check_in->format('Y-m-d') : null,
+            'check_out' => $booking->check_out ? $booking->check_out->format('Y-m-d') : null,
+            'adults' => $booking->adults,
+            'children' => $booking->children,
+            'total_amount' => $booking->total_amount,
+            'discount' => $booking->discount,
+            'final_amount' => $booking->final_amount,
+            'status' => $booking->status,
+            'notes' => $booking->notes,
+        ];
+        
         $oldStatus = $booking->status;
-        $oldValues = ['status' => $oldStatus];
-        $newValues = ['status' => $validated['status']];
         
         // If cancelling and no reason provided, set default user cancellation reason
         if ($validated['status'] === 'cancelled' && empty($validated['cancellation_reason'])) {
@@ -264,14 +358,37 @@ class BookingController extends Controller
             $validated['cancellation_reason'] = null;
         }
         
+        // Calculate final amount (total_amount - discount)
+        $discount = $validated['discount'] ?? 0;
+        $validated['discount'] = $discount;
+        $validated['final_amount'] = max(0, $validated['total_amount'] - $discount);
+        
         $booking->update($validated);
         
-        // Log status changes
+        // Capture new values for logging
+        $booking->refresh();
+        $newValues = [
+            'room_id' => $booking->room_id,
+            'guest_name' => $booking->guest_name,
+            'guest_email' => $booking->guest_email,
+            'guest_phone' => $booking->guest_phone,
+            'check_in' => $booking->check_in ? $booking->check_in->format('Y-m-d') : null,
+            'check_out' => $booking->check_out ? $booking->check_out->format('Y-m-d') : null,
+            'adults' => $booking->adults,
+            'children' => $booking->children,
+            'total_amount' => $booking->total_amount,
+            'discount' => $booking->discount,
+            'final_amount' => $booking->final_amount,
+            'status' => $booking->status,
+            'notes' => $booking->notes,
+        ];
+        
+        // Log status changes with special handling
         if ($oldStatus !== $validated['status']) {
             if ($validated['status'] === 'checked_in') {
-                logActivity('checked_in', $booking, "Guest checked in - Booking #{$booking->id} - {$booking->guest_name}", null, $oldValues, $newValues);
+                logActivity('checked_in', $booking, "Guest checked in - Booking #{$booking->id} - {$booking->guest_name}", null, ['status' => $oldStatus], ['status' => 'checked_in']);
             } elseif ($validated['status'] === 'checked_out') {
-                logActivity('checked_out', $booking, "Guest checked out - Booking #{$booking->id} - {$booking->guest_name}", null, $oldValues, $newValues);
+                logActivity('checked_out', $booking, "Guest checked out - Booking #{$booking->id} - {$booking->guest_name}", null, ['status' => $oldStatus], ['status' => 'checked_out']);
                 
                 // Auto-update room cleaning status if booking is checked out
                 $room = $booking->room;
@@ -286,12 +403,23 @@ class BookingController extends Controller
                 }
             } elseif ($validated['status'] === 'cancelled') {
                 $reason = $validated['cancellation_reason'] ?? 'No reason provided';
-                logActivity('cancelled', $booking, "Booking cancelled: {$booking->guest_name} - Reason: {$reason}", null, $oldValues, $newValues);
+                logActivity('cancelled', $booking, "Booking cancelled: {$booking->guest_name} - Reason: {$reason}", null, ['status' => $oldStatus], ['status' => 'cancelled']);
             } else {
-                logActivity('updated', $booking, "Booking status changed from {$oldStatus} to {$validated['status']} - Booking #{$booking->id}", null, $oldValues, $newValues);
+                logActivity('updated', $booking, "Booking status changed from {$oldStatus} to {$validated['status']} - Booking #{$booking->id}", null, ['status' => $oldStatus], ['status' => $validated['status']]);
             }
-        } else {
-            logActivity('updated', $booking, "Updated booking #{$booking->id} for {$booking->guest_name}");
+        }
+        
+        // Log all other field changes
+        $changedFields = [];
+        foreach ($oldValues as $key => $oldValue) {
+            if ($key !== 'status' && isset($newValues[$key]) && $oldValue != $newValues[$key]) {
+                $changedFields[$key] = ['old' => $oldValue, 'new' => $newValues[$key]];
+            }
+        }
+        
+        if (!empty($changedFields)) {
+            $fieldNames = implode(', ', array_keys($changedFields));
+            logActivity('updated', $booking, "Updated booking #{$booking->id} for {$booking->guest_name} - Changed: {$fieldNames}", null, $oldValues, $newValues);
         }
 
         return redirect()->route('bookings.index')
@@ -299,7 +427,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Remove the specified booking
+     * Remove the specified booking (soft delete)
      */
     public function destroy(Booking $booking)
     {
@@ -311,14 +439,84 @@ class BookingController extends Controller
                 ->with('error', 'Cannot delete confirmed or active bookings.');
         }
 
-        $guestName = $booking->guest_name;
-        $bookingId = $booking->id;
+        // Capture booking details before deletion
+        $bookingDetails = [
+            'booking_id' => $booking->id,
+            'booking_reference' => $booking->booking_reference,
+            'guest_name' => $booking->guest_name,
+            'guest_email' => $booking->guest_email,
+            'guest_phone' => $booking->guest_phone,
+            'room_id' => $booking->room_id,
+            'room_number' => $booking->room ? $booking->room->room_number : 'N/A',
+            'check_in' => $booking->check_in ? $booking->check_in->format('Y-m-d') : null,
+            'check_out' => $booking->check_out ? $booking->check_out->format('Y-m-d') : null,
+            'status' => $booking->status,
+            'total_amount' => $booking->total_amount,
+            'final_amount' => $booking->final_amount,
+        ];
+
+        // Soft delete the booking
         $booking->delete();
 
-        logActivity('deleted', null, "Deleted booking #{$bookingId} for {$guestName}", ['booking_id' => $bookingId]);
+        // Log the deletion
+        logActivity('deleted', $booking, "Deleted booking #{$booking->id} for {$booking->guest_name}", $bookingDetails);
 
         return redirect()->route('bookings.index')
             ->with('success', 'Booking deleted successfully.');
+    }
+
+    /**
+     * Restore a soft-deleted booking
+     */
+    public function restore($id)
+    {
+        $booking = Booking::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($booking);
+
+        $booking->restore();
+
+        // Log the restoration
+        logActivity('restored', $booking, "Restored booking #{$booking->id} for {$booking->guest_name}", [
+            'booking_reference' => $booking->booking_reference,
+            'guest_name' => $booking->guest_name,
+        ]);
+
+        return redirect()->route('bookings.index')
+            ->with('success', 'Booking restored successfully.');
+    }
+
+    /**
+     * Permanently delete a booking
+     */
+    public function forceDelete($id)
+    {
+        $booking = Booking::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($booking);
+
+        // Capture booking details before permanent deletion
+        $bookingDetails = [
+            'booking_id' => $booking->id,
+            'booking_reference' => $booking->booking_reference,
+            'guest_name' => $booking->guest_name,
+            'guest_email' => $booking->guest_email,
+            'guest_phone' => $booking->guest_phone,
+            'room_id' => $booking->room_id,
+            'room_number' => $booking->room ? $booking->room->room_number : 'N/A',
+            'check_in' => $booking->check_in ? $booking->check_in->format('Y-m-d') : null,
+            'check_out' => $booking->check_out ? $booking->check_out->format('Y-m-d') : null,
+            'status' => $booking->status,
+            'total_amount' => $booking->total_amount,
+            'final_amount' => $booking->final_amount,
+        ];
+
+        // Permanently delete the booking
+        $booking->forceDelete();
+
+        // Log the permanent deletion
+        logActivity('force_deleted', null, "Permanently deleted booking #{$booking->id} for {$booking->guest_name}", $bookingDetails);
+
+        return redirect()->route('bookings.index')
+            ->with('success', 'Booking permanently deleted.');
     }
 
     /**
@@ -332,9 +530,9 @@ class BookingController extends Controller
         $month = $request->get('month', now()->month);
         $year = $request->get('year', now()->year);
         
-        // Get bookings for the month (only active / occupying statuses)
+        // Get bookings for the month (exclude confirmed, show pending, checked_in, and checked_out)
         $bookings = Booking::where('hotel_id', $hotelId)
-            ->whereIn('status', ['pending', 'confirmed', 'checked_in'])
+            ->whereIn('status', ['pending', 'checked_in', 'checked_out'])
             ->where(function ($query) use ($year, $month, $hotelId) {
                 $query->whereYear('check_in', $year)
                       ->whereMonth('check_in', $month)
@@ -344,7 +542,7 @@ class BookingController extends Controller
                              ->whereMonth('check_out', $month);
                       });
             })
-            ->with('room')
+            ->with(['room.roomType', 'payments', 'posSales'])
             ->get();
         
         // Create calendar data
@@ -435,6 +633,28 @@ class BookingController extends Controller
         if ($booking->status !== 'checked_in') {
             return redirect()->route('bookings.index')
                 ->with('error', 'Only checked-in bookings can be checked out.');
+        }
+
+        // Check for outstanding balance (booking + POS charges)
+        $outstandingBalance = $booking->outstanding_balance;
+        
+        if ($outstandingBalance > 0) {
+            // Get breakdown of outstanding amounts
+            $bookingBalance = max(0, $booking->final_amount - $booking->total_paid);
+            $posCharges = $booking->total_pos_charges;
+            
+            $message = "Cannot check out. Outstanding balance: $" . number_format($outstandingBalance, 2) . ". ";
+            
+            if ($bookingBalance > 0 && $posCharges > 0) {
+                $message .= "Booking balance: $" . number_format($bookingBalance, 2) . ", POS charges: $" . number_format($posCharges, 2) . ". ";
+            } elseif ($posCharges > 0) {
+                $message .= "Unpaid POS charges: $" . number_format($posCharges, 2) . ". ";
+            }
+            
+            $message .= "Please settle all outstanding amounts before checkout.";
+            
+            return redirect()->route('bookings.index')
+                ->with('error', $message);
         }
 
         $oldStatus = $booking->status;

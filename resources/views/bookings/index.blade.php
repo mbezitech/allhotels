@@ -59,12 +59,33 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">All Bookings</h2>
     <div>
+        @if(isset($deletedCount) && $deletedCount > 0 && !($showDeleted ?? false))
+            <a href="{{ route('bookings.index', ['show_deleted' => 1] + request()->except('show_deleted')) }}" 
+               class="btn" 
+               style="background: #ff9800; color: white; margin-right: 10px;">
+                View Deleted ({{ $deletedCount }})
+            </a>
+        @endif
+        @if($showDeleted ?? false)
+            <a href="{{ route('bookings.index', request()->except('show_deleted')) }}" 
+               class="btn" 
+               style="background: #95a5a6; color: white; margin-right: 10px;">
+                View Active Bookings
+            </a>
+        @endif
         <a href="{{ route('bookings.calendar') }}" class="btn" style="background: #95a5a6; color: white; margin-right: 10px;">Calendar View</a>
         @if(auth()->user()->hasPermission('bookings.create') || auth()->user()->isSuperAdmin())
             <a href="{{ route('bookings.create') }}" class="btn btn-primary">New Booking</a>
         @endif
     </div>
 </div>
+
+@if($showDeleted ?? false)
+    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+        <strong style="color: #856404;">⚠️ Viewing Deleted Bookings</strong>
+        <p style="color: #856404; margin: 5px 0 0 0; font-size: 14px;">These bookings have been soft-deleted and can be restored or permanently deleted.</p>
+    </div>
+@endif
 
 <!-- Search and Filters -->
 <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
@@ -276,7 +297,7 @@
                 <th>Check In</th>
                 <th>Check Out</th>
                 <th>Nights</th>
-                <th>Total</th>
+                <th>Total / Final</th>
                 <th>Paid</th>
                 <th>Balance</th>
                 <th>Source</th>
@@ -288,7 +309,7 @@
         </thead>
         <tbody>
             @forelse($bookings as $booking)
-                <tr>
+                <tr style="{{ ($showDeleted ?? false) && $booking->trashed() ? 'opacity: 0.7; background-color: #f8f9fa;' : '' }}">
                     @if(isset($isSuperAdmin) && $isSuperAdmin)
                     <td>
                         <strong style="color: #667eea;">{{ $booking->hotel->name ?? 'Unknown Hotel' }}</strong>
@@ -302,7 +323,15 @@
                     <td>{{ $booking->check_in->format('M d, Y') }}</td>
                     <td>{{ $booking->check_out->format('M d, Y') }}</td>
                     <td>{{ $booking->nights }}</td>
-                    <td>${{ number_format($booking->total_amount, 2) }}</td>
+                    <td>
+                        @if(($booking->discount ?? 0) > 0)
+                            <div style="font-size: 12px; color: #999; text-decoration: line-through;">${{ number_format($booking->total_amount, 2) }}</div>
+                            <div style="font-weight: 600; color: #667eea;">${{ number_format($booking->final_amount, 2) }}</div>
+                            <div style="font-size: 11px; color: #e74c3c;">-{{ number_format($booking->discount, 2) }} discount</div>
+                        @else
+                            ${{ number_format($booking->total_amount, 2) }}
+                        @endif
+                    </td>
                     <td>${{ number_format($booking->total_paid, 2) }}</td>
                     <td>
                         ${{ number_format($booking->outstanding_balance, 2) }}
@@ -396,12 +425,28 @@
                                 <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
                             @endif
                             
-                            @if(auth()->user()->hasPermission('bookings.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
-                                <form action="{{ route('bookings.destroy', $booking) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Delete</button>
-                                </form>
+                            @if($showDeleted ?? false)
+                                {{-- Show restore and force delete for deleted bookings --}}
+                                @if(auth()->user()->hasPermission('bookings.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                    <form action="{{ route('bookings.restore', $booking->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this booking?')">
+                                        @csrf
+                                        <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
+                                    </form>
+                                    <form action="{{ route('bookings.forceDelete', $booking->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('⚠️ WARNING: This will permanently delete this booking. This action cannot be undone. Are you absolutely sure?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Permanently Delete</button>
+                                    </form>
+                                @endif
+                            @else
+                                {{-- Show regular delete for active bookings --}}
+                                @if(auth()->user()->hasPermission('bookings.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                    <form action="{{ route('bookings.destroy', $booking) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+                                    </form>
+                                @endif
                             @endif
                         </div>
                     </td>

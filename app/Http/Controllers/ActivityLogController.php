@@ -99,7 +99,39 @@ class ActivityLogController extends Controller
         // Get available actions and model types for filters
         $availableActions = ActivityLog::distinct()->pluck('action')->sort()->values();
         $availableModelTypes = ActivityLog::distinct()->pluck('model_type')->filter()->sort()->values();
-        $users = User::all();
+        // Only show users who belong to the current hotel (or all for super admin if no hotel selected)
+        $users = collect();
+        $hotelId = session('hotel_id');
+        if ($hotelId) {
+            $hotel = \App\Models\Hotel::find($hotelId);
+            if ($hotel) {
+                $hotelOwnerId = $hotel->owner_id;
+                
+                // Get users who have roles in this hotel
+                $userIds = \Illuminate\Support\Facades\DB::table('user_roles')
+                    ->where('hotel_id', $hotelId)
+                    ->distinct()
+                    ->pluck('user_id')
+                    ->toArray();
+                
+                // Include hotel owner if they exist
+                if ($hotelOwnerId) {
+                    $userIds[] = $hotelOwnerId;
+                }
+                
+                $userIds = array_unique($userIds);
+                
+                if (!empty($userIds)) {
+                    $users = User::whereIn('id', $userIds)
+                        ->where('is_super_admin', false)
+                        ->orderBy('name')
+                        ->get();
+                }
+            }
+        } elseif (auth()->user()->isSuperAdmin()) {
+            // Super admin with no hotel selected - show all non-super admin users
+            $users = User::where('is_super_admin', false)->orderBy('name')->get();
+        }
 
         $logs = $query->orderBy('created_at', 'desc')->paginate(50);
 

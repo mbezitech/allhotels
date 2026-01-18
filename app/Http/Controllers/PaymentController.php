@@ -18,8 +18,16 @@ class PaymentController extends Controller
         $hotelId = session('hotel_id');
         $isSuperAdmin = auth()->user()->isSuperAdmin();
         
+        // Check if showing deleted payments
+        $showDeleted = $request->has('show_deleted') && $request->show_deleted == '1';
+        
         // Super admins can see all payments, others only their hotel
         $query = Payment::query();
+        
+        if ($showDeleted) {
+            $query->withTrashed();
+        }
+        
         if (!$isSuperAdmin) {
             $query->where('hotel_id', $hotelId);
         }
@@ -30,6 +38,15 @@ class PaymentController extends Controller
         }
         
         $query->with(['booking', 'posSale', 'receivedBy', 'hotel']);
+
+        // Filter by payment type (booking or pos)
+        if ($request->has('payment_type') && $request->payment_type) {
+            if ($request->payment_type === 'booking') {
+                $query->whereNotNull('booking_id');
+            } elseif ($request->payment_type === 'pos') {
+                $query->whereNotNull('pos_sale_id');
+            }
+        }
 
         // Filter by booking
         if ($request->has('booking_id') && $request->booking_id) {
@@ -54,12 +71,38 @@ class PaymentController extends Controller
             $query->whereDate('paid_at', '<=', $request->to_date);
         }
 
-        $payments = $query->orderBy('paid_at', 'desc')->paginate(20);
+        $payments = $query->orderBy('paid_at', 'desc')->paginate(20)->withQueryString();
 
         // Get all hotels for super admin filter
         $hotels = $isSuperAdmin ? \App\Models\Hotel::orderBy('name')->get() : collect();
 
-        return view('payments.index', compact('payments', 'hotels', 'isSuperAdmin'));
+        // Get bookings and POS sales for filter dropdowns (if needed)
+        $bookings = collect();
+        $posSales = collect();
+        if ($hotelId || ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id)) {
+            $filterHotelId = $isSuperAdmin && $request->has('hotel_id') && $request->hotel_id ? $request->hotel_id : $hotelId;
+            $bookings = Booking::where('hotel_id', $filterHotelId)
+                ->orderBy('created_at', 'desc')
+                ->limit(100)
+                ->get(['id', 'booking_reference', 'guest_name', 'created_at']);
+            $posSales = PosSale::where('hotel_id', $filterHotelId)
+                ->orderBy('created_at', 'desc')
+                ->limit(100)
+                ->get(['id', 'sale_reference', 'created_at']);
+        }
+
+        // Count deleted payments
+        $deletedCount = 0;
+        $deletedQuery = Payment::onlyTrashed();
+        if (!$isSuperAdmin) {
+            $deletedQuery->where('hotel_id', $hotelId);
+        }
+        if ($isSuperAdmin && $request->has('hotel_id') && $request->hotel_id) {
+            $deletedQuery->where('hotel_id', $request->hotel_id);
+        }
+        $deletedCount = $deletedQuery->count();
+
+        return view('payments.index', compact('payments', 'hotels', 'isSuperAdmin', 'bookings', 'posSales', 'showDeleted', 'deletedCount'));
     }
 
     /**
@@ -68,6 +111,12 @@ class PaymentController extends Controller
     public function create(Request $request)
     {
         $hotelId = session('hotel_id');
+        
+        // Log access to payment creation form
+        logActivity('create_form_accessed', null, "Accessed payment creation form", [
+            'user_id' => auth()->id(),
+            'hotel_id' => $hotelId,
+        ]);
         
         $bookingId = $request->get('booking_id');
         $posSaleId = $request->get('pos_sale_id');
@@ -147,7 +196,9 @@ class PaymentController extends Controller
             }
         }
 
-        DB::transaction(function () use ($validated, $hotelId, $bookingId, $posSaleId) {
+        $payment = null;
+        
+        DB::transaction(function () use ($validated, $hotelId, $bookingId, $posSaleId, &$payment) {
             // Create payment
             $payment = Payment::create([
                 'hotel_id' => $hotelId,
@@ -172,6 +223,17 @@ class PaymentController extends Controller
                 $posSale->updatePaymentStatus();
             }
         });
+        
+        // Log payment creation
+        $paymentType = $bookingId ? 'Booking' : 'POS Sale';
+        $reference = $bookingId ? "Booking #{$bookingId}" : "POS Sale #{$posSaleId}";
+        logActivity('created', $payment, "Created payment: {$paymentType} - {$reference} - Amount: $" . number_format($payment->amount, 2), [
+            'payment_id' => $payment->id,
+            'amount' => $payment->amount,
+            'payment_method' => $payment->payment_method,
+            'booking_id' => $bookingId,
+            'pos_sale_id' => $posSaleId,
+        ]);
 
         $redirectRoute = $bookingId 
             ? route('bookings.show', $bookingId)
@@ -188,22 +250,42 @@ class PaymentController extends Controller
     {
         $this->authorizeHotel($payment);
         
+        // Log payment viewing
+        $paymentType = $payment->booking_id ? 'Booking' : 'POS Sale';
+        $reference = $payment->booking_id ? "Booking #{$payment->booking_id}" : "POS Sale #{$payment->pos_sale_id}";
+        logActivity('viewed', $payment, "Viewed payment: {$paymentType} - {$reference} - Amount: $" . number_format($payment->amount, 2), [
+            'payment_id' => $payment->id,
+            'amount' => $payment->amount,
+            'payment_method' => $payment->payment_method,
+        ]);
+        
         $payment->load('booking', 'posSale', 'receivedBy');
         
         return view('payments.show', compact('payment'));
     }
 
     /**
-     * Remove the specified payment
+     * Remove the specified payment (soft delete)
      */
     public function destroy(Payment $payment)
     {
         $this->authorizeHotel($payment);
 
+        // Capture payment details before deletion
+        $paymentDetails = [
+            'payment_id' => $payment->id,
+            'amount' => $payment->amount,
+            'payment_method' => $payment->payment_method,
+            'booking_id' => $payment->booking_id,
+            'pos_sale_id' => $payment->pos_sale_id,
+            'paid_at' => $payment->paid_at ? $payment->paid_at->format('Y-m-d H:i:s') : null,
+        ];
+
         DB::transaction(function () use ($payment) {
             $bookingId = $payment->booking_id;
             $posSaleId = $payment->pos_sale_id;
             
+            // Soft delete the payment
             $payment->delete();
 
             // Update payment status
@@ -218,8 +300,65 @@ class PaymentController extends Controller
             }
         });
 
+        // Log the deletion
+        $paymentType = $paymentDetails['booking_id'] ? 'Booking' : 'POS Sale';
+        $reference = $paymentDetails['booking_id'] ? "Booking #{$paymentDetails['booking_id']}" : "POS Sale #{$paymentDetails['pos_sale_id']}";
+        logActivity('deleted', $payment, "Deleted payment: {$paymentType} - {$reference} - Amount: $" . number_format($paymentDetails['amount'], 2), $paymentDetails);
+
         return redirect()->route('payments.index')
             ->with('success', 'Payment deleted successfully.');
+    }
+
+    /**
+     * Restore a soft-deleted payment
+     */
+    public function restore($id)
+    {
+        $payment = Payment::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($payment);
+
+        $payment->restore();
+
+        // Log the restoration
+        $paymentType = $payment->booking_id ? 'Booking' : 'POS Sale';
+        $reference = $payment->booking_id ? "Booking #{$payment->booking_id}" : "POS Sale #{$payment->pos_sale_id}";
+        logActivity('restored', $payment, "Restored payment: {$paymentType} - {$reference} - Amount: $" . number_format($payment->amount, 2), [
+            'payment_id' => $payment->id,
+            'amount' => $payment->amount,
+        ]);
+
+        return redirect()->route('payments.index')
+            ->with('success', 'Payment restored successfully.');
+    }
+
+    /**
+     * Permanently delete a payment
+     */
+    public function forceDelete($id)
+    {
+        $payment = Payment::withTrashed()->findOrFail($id);
+        $this->authorizeHotel($payment);
+
+        // Capture payment details before permanent deletion
+        $paymentDetails = [
+            'payment_id' => $payment->id,
+            'amount' => $payment->amount,
+            'payment_method' => $payment->payment_method,
+            'booking_id' => $payment->booking_id,
+            'pos_sale_id' => $payment->pos_sale_id,
+            'paid_at' => $payment->paid_at ? $payment->paid_at->format('Y-m-d H:i:s') : null,
+        ];
+
+        // Permanently delete the payment
+        $payment->forceDelete();
+
+        // Log the permanent deletion
+        $paymentType = $paymentDetails['booking_id'] ? 'Booking' : 'POS Sale';
+        $reference = $paymentDetails['booking_id'] ? "Booking #{$paymentDetails['booking_id']}" : "POS Sale #{$paymentDetails['pos_sale_id']}";
+        logActivity('force_deleted', null, "Permanently deleted payment: {$paymentType} - {$reference} - Amount: $" . number_format($paymentDetails['amount'], 2), $paymentDetails);
+
+        return redirect()->route('payments.index')
+            ->with('success', 'Payment permanently deleted.');
     }
 
     /**

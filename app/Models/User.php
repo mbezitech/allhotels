@@ -4,13 +4,15 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -86,8 +88,34 @@ class User extends Authenticatable
             return true;
         }
 
+        // Check if user is the hotel owner - owners should always have access
+        $hotel = \App\Models\Hotel::find($hotelId);
+        if ($hotel && $hotel->owner_id === $this->id) {
+            // If owner doesn't have a role assigned, assign admin role automatically
+            $hasRole = $this->roles()
+                ->wherePivot('hotel_id', $hotelId)
+                ->where('roles.hotel_id', $hotelId)
+                ->exists();
+                
+            if (!$hasRole) {
+                // Auto-assign admin role to owner
+                $adminRole = \App\Models\Role::where('slug', 'admin')
+                    ->where('hotel_id', $hotelId)
+                    ->first();
+                    
+                if ($adminRole) {
+                    $this->roles()->attach($adminRole->id, ['hotel_id' => $hotelId]);
+                }
+            }
+            
+            return true;
+        }
+
+        // Check if user has a role assigned to this hotel
+        // AND the role itself belongs to this hotel (roles are now hotel-specific)
         return $this->roles()
             ->wherePivot('hotel_id', $hotelId)
+            ->where('roles.hotel_id', $hotelId) // Ensure role belongs to hotel
             ->exists();
     }
 
@@ -100,9 +128,13 @@ class User extends Authenticatable
             return Hotel::all();
         }
 
-        $hotelIds = $this->roles()
+        // Get hotel IDs from user_roles pivot where role also belongs to that hotel
+        $hotelIds = DB::table('user_roles')
+            ->join('roles', 'user_roles.role_id', '=', 'roles.id')
+            ->where('user_roles.user_id', $this->id)
+            ->whereColumn('user_roles.hotel_id', 'roles.hotel_id') // Ensure pivot hotel_id matches role hotel_id
             ->distinct()
-            ->pluck('hotel_id')
+            ->pluck('user_roles.hotel_id')
             ->unique()
             ->filter();
 
@@ -129,11 +161,21 @@ class User extends Authenticatable
         }
 
         // Check if user has a role in this hotel that has the permission
-        return $this->roles()
-            ->wherePivot('hotel_id', $hotelId)
-            ->whereHas('permissions', function ($query) use ($permissionSlug) {
-                $query->where('slug', $permissionSlug);
+        // Ensure role, permission, and role_permissions all belong to this hotel
+        return DB::table('user_roles')
+            ->join('roles', 'user_roles.role_id', '=', 'roles.id')
+            ->join('role_permissions', function($join) use ($hotelId) {
+                $join->on('roles.id', '=', 'role_permissions.role_id')
+                     ->where('role_permissions.hotel_id', '=', $hotelId);
             })
+            ->join('permissions', function($join) use ($permissionSlug, $hotelId) {
+                $join->on('role_permissions.permission_id', '=', 'permissions.id')
+                     ->where('permissions.slug', '=', $permissionSlug)
+                     ->where('permissions.hotel_id', '=', $hotelId);
+            })
+            ->where('user_roles.user_id', $this->id)
+            ->where('user_roles.hotel_id', $hotelId)
+            ->where('roles.hotel_id', $hotelId)
             ->exists();
     }
 
@@ -154,11 +196,15 @@ class User extends Authenticatable
             return collect();
         }
 
-        return Permission::whereHas('roles', function ($query) use ($hotelId) {
-            $query->whereHas('users', function ($q) use ($hotelId) {
-                $q->where('user_id', $this->id)
-                  ->where('hotel_id', $hotelId);
-            });
-        })->get();
+        // Get permissions that belong to this hotel and are assigned to user's roles
+        return Permission::where('hotel_id', $hotelId)
+            ->whereHas('roles', function ($query) use ($hotelId) {
+                $query->where('roles.hotel_id', $hotelId)
+                    ->whereHas('users', function ($q) use ($hotelId) {
+                        $q->where('user_id', $this->id)
+                          ->where('user_roles.hotel_id', $hotelId);
+                    });
+            })
+            ->get();
     }
 }

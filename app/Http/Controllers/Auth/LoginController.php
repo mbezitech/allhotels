@@ -67,9 +67,8 @@ class LoginController extends Controller
             }
 
             // Check if user has access to the selected hotel
-            $hasAccess = $user->roles()
-                ->wherePivot('hotel_id', $hotelId)
-                ->exists();
+            // This method also handles hotel owners automatically
+            $hasAccess = $user->hasAccessToHotel($hotelId);
 
             if (!$hasAccess) {
                 Auth::logout();

@@ -62,30 +62,51 @@
         color: white;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
         cursor: pointer;
         border-left: 3px solid rgba(255, 255, 255, 0.5);
+    }
+    .booking-item-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .booking-item-header {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .booking-item-footer {
+        font-size: 9px;
+        opacity: 0.9;
+        margin-top: 2px;
+        padding-left: 2px;
     }
     .booking-item:hover {
         opacity: 0.9;
         transform: translateX(2px);
         transition: all 0.2s;
     }
-    .booking-item.confirmed {
-        background: #28a745;
-    }
-    .booking-item.pending {
+    .booking-item.pending-payment {
         background: #ffc107;
         color: #333;
+        border-left: 3px solid #ff9800;
     }
-    .booking-item.checked_in {
+    .booking-item.paid-in-full {
+        background: #28a745;
+        color: white;
+        border-left: 3px solid #1e7e34;
+    }
+    .booking-item.checked-in {
         background: #17a2b8;
-    }
-    .booking-item.checked_out {
-        background: #6c757d;
+        color: white;
+        border-left: 3px solid #117a8b;
     }
     .booking-item.cancelled {
         background: #dc3545;
+        color: white;
     }
     .status-badge {
         font-size: 9px;
@@ -102,9 +123,21 @@
         color: #ffc107;
         text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
     }
+    .pos-charges-indicator {
+        display: inline-block;
+        font-size: 10px;
+        margin-left: 4px;
+        font-weight: bold;
+        color: #ff5722;
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    }
     .booking-item.has-pending-payment {
         border-left: 3px solid #ffc107;
         box-shadow: 0 0 3px rgba(255, 193, 7, 0.5);
+    }
+    .booking-item.has-pos-charges {
+        border-left: 3px solid #ff5722;
+        box-shadow: 0 0 3px rgba(255, 87, 34, 0.5);
     }
     .weekday-header {
         display: grid;
@@ -146,10 +179,9 @@
         border-radius: 3px;
         border-left: 3px solid rgba(255, 255, 255, 0.5);
     }
-    .legend-color.confirmed { background: #28a745; }
-    .legend-color.pending { background: #ffc107; }
-    .legend-color.checked_in { background: #17a2b8; }
-    .legend-color.checked_out { background: #6c757d; }
+    .legend-color.pending-payment { background: #ffc107; border-left: 3px solid #ff9800; }
+    .legend-color.paid-in-full { background: #28a745; border-left: 3px solid #1e7e34; }
+    .legend-color.checked-in { background: #17a2b8; border-left: 3px solid #117a8b; }
     .legend-color.cancelled { background: #dc3545; }
 </style>
 @endpush
@@ -165,28 +197,24 @@
 
     <div class="status-legend">
         <div class="legend-item">
-            <div class="legend-color confirmed"></div>
-            <span><strong>Confirmed</strong> - Booking confirmed</span>
+            <div class="legend-color pending-payment"></div>
+            <span><strong>Pending Payment</strong> - Outstanding balance</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color pending"></div>
-            <span><strong>Pending</strong> - Awaiting confirmation</span>
+            <span style="font-size: 14px; color: #ff5722; font-weight: bold;">🛒</span>
+            <span><strong>POS Charges</strong> - Outstanding room service/POS charges</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color checked_in"></div>
-            <span><strong>Checked In</strong> - Guest currently staying</span>
+            <div class="legend-color paid-in-full"></div>
+            <span><strong>Paid in Full</strong> - Payment complete</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color checked_out"></div>
-            <span><strong>Checked Out</strong> - Stay completed</span>
+            <div class="legend-color checked-in"></div>
+            <span><strong>Currently Checked In</strong> - Guest currently staying</span>
         </div>
         <div class="legend-item">
             <div class="legend-color cancelled"></div>
             <span><strong>Cancelled</strong> - Booking cancelled</span>
-        </div>
-        <div class="legend-item">
-            <span style="font-size: 14px; color: #ffc107; font-weight: bold;">💰</span>
-            <span><strong>Pending Payment</strong> - Outstanding balance</span>
         </div>
     </div>
 
@@ -215,20 +243,76 @@
                 <div class="day-number">{{ $day['date']->day }}</div>
                 @foreach($day['bookings'] as $booking)
                     @php
-                        $statusClass = str_replace('_', '-', $booking->status);
-                        $statusLabel = ucfirst(str_replace('_', ' ', $booking->status));
-                        $hasPendingPayment = $booking->outstanding_balance > 0 && $booking->status !== 'cancelled';
-                        $paymentInfo = $hasPendingPayment ? ' - Balance: $' . number_format($booking->outstanding_balance, 2) : '';
+                        // Determine payment status and display class
+                        $outstandingBalance = $booking->outstanding_balance;
+                        $bookingBalance = max(0, $booking->final_amount - $booking->total_paid);
+                        $posCharges = $booking->total_pos_charges;
+                        $isCheckedIn = $booking->status === 'checked_in';
+                        $isCancelled = $booking->status === 'cancelled';
+                        $isFullyPaid = $outstandingBalance <= 0;
+                        $hasPosCharges = $posCharges > 0;
+                        
+                        // Build title info with breakdown
+                        $titleBreakdown = [];
+                        if ($bookingBalance > 0) {
+                            $titleBreakdown[] = 'Booking: $' . number_format($bookingBalance, 2);
+                        }
+                        if ($hasPosCharges) {
+                            $titleBreakdown[] = 'POS: $' . number_format($posCharges, 2);
+                        }
+                        $titleInfo = !empty($titleBreakdown) ? ' - ' . implode(', ', $titleBreakdown) : '';
+                        
+                        if ($isCancelled) {
+                            $statusClass = 'cancelled';
+                            $statusLabel = 'Cancelled';
+                            $titleInfo = ' - Cancelled';
+                        } elseif ($isCheckedIn) {
+                            // Currently checked in - show this status
+                            $statusClass = 'checked-in';
+                            $statusLabel = 'Currently Checked In';
+                            if ($isFullyPaid) {
+                                $titleInfo = ' - Paid in Full';
+                            } else {
+                                $titleInfo = ' - Balance: $' . number_format($outstandingBalance, 2) . $titleInfo;
+                            }
+                        } elseif ($outstandingBalance > 0) {
+                            // Pending payment
+                            $statusClass = 'pending-payment';
+                            $statusLabel = 'Pending Payment';
+                            $titleInfo = ' - Balance: $' . number_format($outstandingBalance, 2) . $titleInfo;
+                        } else {
+                            // Paid in full
+                            $statusClass = 'paid-in-full';
+                            $statusLabel = 'Paid in Full';
+                            $titleInfo = ' - Payment Complete';
+                        }
                     @endphp
                     <a href="{{ route('bookings.show', $booking->id) }}" 
-                       class="booking-item {{ $statusClass }} {{ $hasPendingPayment ? 'has-pending-payment' : '' }}" 
-                       title="{{ $booking->guest_name }} - Room {{ $booking->room->room_number }} - Status: {{ $statusLabel }}{{ $paymentInfo }}" 
+                       class="booking-item {{ $statusClass }} {{ $hasPosCharges ? 'has-pos-charges' : '' }}" 
+                       title="{{ $booking->guest_name }} - Room {{ $booking->room->room_number }} - {{ $statusLabel }}{{ $titleInfo }}" 
                        style="text-decoration: none; display: block;">
-                        <span class="status-badge">{{ $statusLabel }}</span>
-                        {{ $booking->guest_name }} ({{ $booking->room->room_number }})
-                        @if($hasPendingPayment)
-                            <span class="pending-payment-indicator" title="Pending Payment: ${{ number_format($booking->outstanding_balance, 2) }}">💰</span>
-                        @endif
+                        <div class="booking-item-content">
+                            <div class="booking-item-header">
+                                <span class="status-badge">{{ $statusLabel }}</span>
+                                @if($outstandingBalance > 0 && !$isCancelled && !$hasPosCharges)
+                                    <span class="pending-payment-indicator" title="Outstanding: ${{ number_format($outstandingBalance, 2) }}">💰</span>
+                                @endif
+                            </div>
+                            <div style="font-size: 10px; font-weight: 500; margin-top: 2px; padding-left: 2px;">
+                                {{ $booking->guest_name }}
+                            </div>
+                            <div style="font-size: 9px; opacity: 0.9; margin-top: 1px; padding-left: 2px;">
+                                Room: {{ $booking->room->room_number ?? 'N/A' }}
+                                @if($booking->room && $booking->room->roomType)
+                                    <span style="margin-left: 4px; opacity: 0.8;">({{ $booking->room->roomType->name }})</span>
+                                @endif
+                            </div>
+                            @if($hasPosCharges && !$isCancelled)
+                                <div class="booking-item-footer">
+                                    🛒 POS Outstanding: ${{ number_format($posCharges, 2) }}
+                                </div>
+                            @endif
+                        </div>
                     </a>
                 @endforeach
             </div>
