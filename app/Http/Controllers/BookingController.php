@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Hotel;
 use App\Models\Room;
+use App\Services\HotelMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
@@ -231,6 +233,36 @@ class BookingController extends Controller
             'check_out' => $booking->check_out->format('Y-m-d'),
             'total_amount' => $booking->total_amount,
         ]);
+
+        // Send confirmation email if guest email is provided
+        if (!empty($booking->guest_email)) {
+            try {
+                $emailSent = HotelMailService::send(
+                    $hotelId,
+                    $booking->guest_email,
+                    "Booking Confirmation - {$booking->booking_reference}",
+                    'emails.booking_confirmation',
+                    ['booking' => $booking->load('room.roomType', 'hotel')]
+                );
+                
+                if ($emailSent) {
+                    Log::info('Booking confirmation email sent', [
+                        'booking_id' => $booking->id,
+                        'guest_email' => $booking->guest_email,
+                    ]);
+                } else {
+                    Log::warning('Booking confirmation email not sent - email settings not configured', [
+                        'booking_id' => $booking->id,
+                        'hotel_id' => $hotelId,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send booking confirmation email', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return redirect()->route('bookings.index')
             ->with('success', 'Booking created successfully.');
