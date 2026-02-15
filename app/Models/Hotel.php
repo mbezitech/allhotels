@@ -20,6 +20,12 @@ class Hotel extends Model
         'phone',
         'email',
         'owner_id',
+        'is_active',
+        'timezone',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     /**

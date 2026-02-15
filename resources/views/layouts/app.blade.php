@@ -423,6 +423,13 @@
                         <span class="nav-section-toggle">▼</span>
                     </li>
                     <div class="nav-section-items">
+                        @if(auth()->user()->isSuperAdmin())
+                            <li class="nav-item">
+                                <a href="{{ route('settings.index') }}" class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                                    System Settings
+                                </a>
+                            </li>
+                        @endif
                         @if(auth()->user()->hasPermission('email_settings.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('email-settings.index') }}" class="nav-link {{ request()->routeIs('email-settings.*') ? 'active' : '' }}">

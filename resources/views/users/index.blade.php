@@ -55,12 +55,12 @@
         color: white;
     }
     .badge-active {
-        background: #d4edda;
-        color: #155724;
+        background: #28a745;
+        color: white;
     }
     .badge-inactive {
-        background: #f8d7da;
-        color: #721c24;
+        background: #6c757d;
+        color: white;
     }
     .btn-activate {
         background: #28a745;
@@ -124,7 +124,7 @@
                         @if($user->is_active ?? true)
                             <span class="badge badge-active">Active</span>
                         @else
-                            <span class="badge badge-inactive">Inactive</span>
+                            <span class="badge badge-inactive">Disabled</span>
                         @endif
                     </td>
                     <td>
@@ -151,18 +151,26 @@
                     <td>
                         <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                             <a href="{{ route('users.edit', $user) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
-                            @if($user->id !== auth()->id() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.activate')))
+                            @php
+                                $currentUser = auth()->user();
+                                $hotelId = session('hotel_id');
+                                // CRITICAL: Never allow users to enable/disable themselves
+                                $canActivate = $user->id !== $currentUser->id && 
+                                             ($currentUser->isSuperAdmin() || 
+                                              ($hotelId && $currentUser->hasPermission('users.activate', $hotelId)));
+                            @endphp
+                            @if($canActivate)
                                 @if($user->is_active ?? true)
-                                    <form action="{{ route('users.deactivate', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to deactivate this user? They will not be able to login.')">
+                                    <form action="{{ route('users.deactivate', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to disable this user? They will not be able to login.');">
                                         @csrf
                                         @method('PUT')
-                                        <button type="submit" class="btn btn-deactivate" style="padding: 6px 12px; font-size: 12px;">Deactivate</button>
+                                        <button type="submit" class="btn" style="background: #ffc107; color: #333; padding: 6px 12px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer;">Disable</button>
                                     </form>
                                 @else
-                                    <form action="{{ route('users.activate', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to activate this user?')">
+                                    <form action="{{ route('users.activate', $user) }}" method="POST" style="display: inline;">
                                         @csrf
                                         @method('PUT')
-                                        <button type="submit" class="btn btn-activate" style="padding: 6px 12px; font-size: 12px;">Activate</button>
+                                        <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer;">Enable</button>
                                     </form>
                                 @endif
                             @endif
@@ -199,29 +207,6 @@
             @endforelse
         </tbody>
     </table>
-</div>
-
-<div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 20px; margin-top: 30px;">
-    <h3 style="color: #856404; margin-bottom: 15px;">Default Login Credentials</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
-        <div style="background: white; padding: 15px; border-radius: 6px;">
-            <strong style="color: #856404;">Super Admin</strong>
-            <div style="margin-top: 8px; font-size: 14px;">
-                <div><strong>Email:</strong> admin@hotels.com</div>
-                <div><strong>Password:</strong> admin123</div>
-            </div>
-        </div>
-        <div style="background: white; padding: 15px; border-radius: 6px;">
-            <strong style="color: #856404;">Hotel Owner</strong>
-            <div style="margin-top: 8px; font-size: 14px;">
-                <div><strong>Email:</strong> owner@hotels.com</div>
-                <div><strong>Password:</strong> password</div>
-            </div>
-        </div>
-    </div>
-    <p style="color: #856404; margin-top: 15px; font-size: 13px;">
-        <strong>Note:</strong> These are default credentials. Please change passwords after first login for security.
-    </p>
 </div>
 @endsection
 

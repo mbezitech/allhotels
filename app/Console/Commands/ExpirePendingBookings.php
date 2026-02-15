@@ -12,7 +12,12 @@ class ExpirePendingBookings extends Command
      *
      * @var string
      */
-    protected $signature = 'bookings:expire-pending {--minutes=10 : Minutes after which pending bookings should expire}';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'bookings:expire-pending {--minutes= : Minutes after which pending bookings should expire. Defaults to system setting.}';
 
     /**
      * The console command description.
@@ -26,7 +31,13 @@ class ExpirePendingBookings extends Command
      */
     public function handle()
     {
-        $minutes = (int) $this->option('minutes');
+        $minutes = $this->option('minutes');
+        
+        if (!$minutes) {
+            $minutes = \App\Models\Setting::get('booking_expiration_minutes', 10);
+        }
+        
+        $minutes = (int) $minutes;
         
         $this->info("Checking for pending bookings older than {$minutes} minutes...");
         

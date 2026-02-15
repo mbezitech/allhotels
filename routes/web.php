@@ -41,12 +41,20 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+// Password Reset Routes
+Route::get('password/reset', [App\Http\Controllers\Auth\ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+Route::post('password/email', [App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('password/reset/{token}', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+Route::post('password/reset', [App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])->name('password.update');
+
 // Hotel Management (super admin only - accessible without hotel context)
 // Access control is handled in HotelController constructor
 Route::middleware('auth')->group(function () {
     Route::resource('hotels', HotelController::class);
     Route::post('/hotels/{id}/restore', [HotelController::class, 'restore'])->name('hotels.restore');
     Route::delete('/hotels/{id}/force-delete', [HotelController::class, 'forceDelete'])->name('hotels.force-delete');
+    Route::post('/hotels/{id}/enable', [HotelController::class, 'enable'])->name('hotels.enable');
+    Route::post('/hotels/{id}/disable', [HotelController::class, 'disable'])->name('hotels.disable');
     Route::post('/hotels/switch', [HotelController::class, 'switchHotel'])->name('hotels.switch');
     Route::post('/hotels/{hotel}/switch', [HotelController::class, 'switchHotel'])->name('hotels.switch.hotel');
     
@@ -56,6 +64,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
     Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
     Route::delete('/users/{id}/force-delete', [UserController::class, 'forceDelete'])->name('users.forceDelete');
+    
+    // System Settings (super admin only)
+    Route::get('/settings', [\App\Http\Controllers\SettingController::class, 'index'])->name('settings.index');
+    Route::post('/settings', [\App\Http\Controllers\SettingController::class, 'store'])->name('settings.store');
     
     // Profile Management (all authenticated users)
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');

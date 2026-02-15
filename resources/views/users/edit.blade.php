@@ -105,13 +105,30 @@
             <input type="password" id="password_confirmation" name="password_confirmation" minlength="8">
         </div>
 
-        @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.activate'))
+        @php
+            $currentUser = auth()->user();
+            $canActivate = ($currentUser->isSuperAdmin() || $currentUser->hasPermission('users.activate', session('hotel_id')));
+            $isEditingSelf = $user->id === $currentUser->id;
+        @endphp
+        @if($canActivate && !$isEditingSelf)
         <div class="form-group">
             <div class="checkbox-group">
                 <input type="checkbox" id="is_active" name="is_active" {{ old('is_active', $user->is_active ?? true) ? 'checked' : '' }}>
                 <label for="is_active" style="margin: 0; font-weight: normal;">Active Account</label>
             </div>
             <small style="color: #666; display: block; margin-top: 5px;">Inactive users cannot login to the system</small>
+        </div>
+        @elseif($isEditingSelf)
+        <div class="form-group" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">🔒</span>
+                <div>
+                    <strong style="color: #856404;">Account Status Protection</strong>
+                    <div style="color: #666; font-size: 13px; margin-top: 5px;">
+                        You cannot change your own account status. Please contact an administrator if you need to disable your account.
+                    </div>
+                </div>
+            </div>
         </div>
         @endif
 

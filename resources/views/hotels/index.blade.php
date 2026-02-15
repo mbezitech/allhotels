@@ -32,6 +32,7 @@
         <thead>
             <tr style="background: #f8f9fa;">
                 <th style="padding: 12px; text-align: left; border-bottom: 2px solid #eee;">Name</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #eee;">Status</th>
                 <th style="padding: 12px; text-align: left; border-bottom: 2px solid #eee;">Address</th>
                 <th style="padding: 12px; text-align: left; border-bottom: 2px solid #eee;">Owner</th>
                 <th style="padding: 12px; text-align: left; border-bottom: 2px solid #eee;">Phone</th>
@@ -49,6 +50,13 @@
                             <div style="font-size: 11px; color: #999; margin-top: 4px;">
                                 Deleted: {{ $hotel->deleted_at->format('M d, Y H:i') }}
                             </div>
+                        @endif
+                    </td>
+                    <td style="padding: 12px;">
+                        @if($hotel->is_active)
+                            <span style="padding: 4px 8px; background: #28a745; color: white; border-radius: 4px; font-size: 11px; font-weight: 500;">Active</span>
+                        @else
+                            <span style="padding: 4px 8px; background: #6c757d; color: white; border-radius: 4px; font-size: 11px; font-weight: 500;">Disabled</span>
                         @endif
                     </td>
                     <td style="padding: 12px; color: #666;">
@@ -78,6 +86,17 @@
                             @else
                                 <a href="{{ route('hotels.show', $hotel) }}" style="padding: 6px 12px; background: #3498db; color: white; border-radius: 6px; text-decoration: none; font-size: 13px;">View</a>
                                 <a href="{{ route('hotels.edit', $hotel) }}" style="padding: 6px 12px; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 13px;">Edit</a>
+                                @if($hotel->is_active)
+                                    <form action="{{ route('hotels.disable', $hotel->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to disable this hotel? Users will not be able to access it.');">
+                                        @csrf
+                                        <button type="submit" style="padding: 6px 12px; background: #ffc107; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Disable</button>
+                                    </form>
+                                @else
+                                    <form action="{{ route('hotels.enable', $hotel->id) }}" method="POST" style="display: inline;">
+                                        @csrf
+                                        <button type="submit" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">Enable</button>
+                                    </form>
+                                @endif
                                 @php
                                     $isOwner = $hotel->owner_id === auth()->id();
                                 @endphp
@@ -96,7 +115,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" style="padding: 40px; text-align: center; color: #999;">
+                    <td colspan="7" style="padding: 40px; text-align: center; color: #999;">
                         No hotels found. <a href="{{ route('hotels.create') }}" style="color: #667eea;">Create your first hotel</a>
                     </td>
                 </tr>

@@ -131,6 +131,7 @@
                 <th>Hotel</th>
                 @endif
                 <th>Room Number</th>
+                <th>Name</th>
                 <th>Type</th>
                 <th>Status</th>
                 <th>Floor</th>
@@ -158,6 +159,7 @@
                     </td>
                     @endif
                     <td><strong>{{ $room->room_number }}</strong></td>
+                    <td>{{ $room->name ?? '-' }}</td>
                     <td>{{ $room->roomType->name ?? 'N/A' }}</td>
                     <td>
                         <span class="badge badge-{{ $room->status }}">

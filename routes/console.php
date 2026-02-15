@@ -9,7 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Schedule automatic expiration of pending bookings every minute
-Schedule::command('bookings:expire-pending --minutes=10')
+Schedule::command('bookings:expire-pending')
     ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();

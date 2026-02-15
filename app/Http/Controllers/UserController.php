@@ -113,15 +113,18 @@ class UserController extends Controller
                 ->orderBy('name')
                 ->get();
         } else {
-            // If no hotel context, only show super admins (for super admin users)
+            // If no hotel context, super admins can see ALL users
             if ($user->isSuperAdmin()) {
-                $query = User::where('is_super_admin', true);
+                // No specific query needed to filter by hotel, just get all users
+                // But we still need to build the query to handle sorting and relationships
+                $query = User::query();
                 
                 if ($showDeleted) {
                     $query->withTrashed();
                 }
                 
                 $users = $query->with('ownedHotels')
+                    ->orderBy('is_super_admin', 'desc')
                     ->orderBy('name')
                     ->get();
             } else {
@@ -156,9 +159,7 @@ class UserController extends Controller
                 ->count();
         } else {
             if ($user->isSuperAdmin()) {
-                $deletedCount = User::onlyTrashed()
-                    ->where('is_super_admin', true)
-                    ->count();
+                $deletedCount = User::onlyTrashed()->count();
             }
         }
         
@@ -321,12 +322,24 @@ class UserController extends Controller
 
         // Handle is_active - users with users.activate permission can change it
         if ($currentUser->isSuperAdmin() || $currentUser->hasPermission('users.activate', session('hotel_id'))) {
-            // Prevent users from deactivating themselves
-            if ($user->id === $currentUser->id && !$request->has('is_active')) {
-                return redirect()->route('users.edit', $user)
-                    ->with('error', 'You cannot deactivate your own account.');
+            // CRITICAL: Prevent users from disabling themselves through edit form
+            if ($user->id === $currentUser->id) {
+                // Never allow users to change their own is_active status
+                if ($request->has('is_active')) {
+                    $requestIsActive = $request->boolean('is_active');
+                    // If trying to disable themselves, block it
+                    if (!$requestIsActive || ($user->is_active && !$requestIsActive)) {
+                        \Log::warning("User {$currentUser->id} ({$currentUser->email}) attempted to disable their own account via edit form");
+                        return redirect()->route('users.edit', $user)
+                            ->with('error', 'You cannot disable your own account. This action is not allowed for security reasons.');
+                    }
+                }
+                // Remove is_active from validated data to prevent any changes
+                unset($validated['is_active']);
+            } else {
+                // For other users, allow is_active changes
+                $validated['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : ($user->is_active ?? true);
             }
-            $validated['is_active'] = $request->has('is_active');
         } else {
             // Non-authorized users cannot change active status
             unset($validated['is_active']);
@@ -426,9 +439,10 @@ class UserController extends Controller
         $currentUser = Auth::user();
         
         // Prevent activating yourself (you're already active if you can do this)
+        // This is mainly for consistency, but also prevents any edge cases
         if ($user->id === $currentUser->id) {
             return redirect()->route('users.index')
-                ->with('error', 'You cannot change your own account status.');
+                ->with('info', 'You cannot change your own account status.');
         }
         
         $oldActive = $user->is_active;
@@ -437,7 +451,7 @@ class UserController extends Controller
         logActivity('updated', $user, "Activated user account: {$user->name}", null, ['is_active' => $oldActive], ['is_active' => true]);
 
         return redirect()->route('users.index')
-            ->with('success', 'User activated successfully.');
+            ->with('success', 'User enabled successfully.');
     }
 
     /**
@@ -449,16 +463,17 @@ class UserController extends Controller
         
         $currentUser = Auth::user();
         
-        // Prevent deactivating yourself
+        // CRITICAL: Prevent deactivating yourself - this is a hard block
         if ($user->id === $currentUser->id) {
+            \Log::warning("User {$currentUser->id} ({$currentUser->email}) attempted to disable their own account");
             return redirect()->route('users.index')
-                ->with('error', 'You cannot deactivate your own account.');
+                ->with('error', 'You cannot disable your own account. This action is not allowed for security reasons.');
         }
         
         // Prevent deactivating super admins (unless current user is also super admin)
         if ($user->isSuperAdmin() && !$currentUser->isSuperAdmin()) {
             return redirect()->route('users.index')
-                ->with('error', 'You cannot deactivate super admin accounts.');
+                ->with('error', 'You cannot disable super admin accounts.');
         }
         
         $oldActive = $user->is_active;
@@ -467,7 +482,7 @@ class UserController extends Controller
         logActivity('updated', $user, "Deactivated user account: {$user->name}", null, ['is_active' => $oldActive], ['is_active' => false]);
 
         return redirect()->route('users.index')
-            ->with('success', 'User deactivated successfully.');
+            ->with('success', 'User disabled successfully.');
     }
 
     /**

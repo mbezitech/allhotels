@@ -61,6 +61,11 @@
             <span>{{ $hotel->owner->name }} ({{ $hotel->owner->email }})</span>
         </div>
 
+        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee;">
+            <span style="font-weight: 500; color: #666;">Timezone:</span>
+            <span>{{ $hotel->timezone ?? config('app.timezone') }}</span>
+        </div>
+
         <div style="display: flex; justify-content: space-between; padding: 12px 0;">
             <span style="font-weight: 500; color: #666;">Created:</span>
             <span>{{ $hotel->created_at->format('M d, Y') }}</span>

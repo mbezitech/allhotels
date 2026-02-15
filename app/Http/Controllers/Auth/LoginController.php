@@ -16,8 +16,10 @@ class LoginController extends Controller
      */
     public function showLoginForm()
     {
-        // Get all hotels for the dropdown
-        $hotels = Hotel::all();
+        // Get all hotels for super admins, only active hotels for regular users
+        // Note: This is shown before login, so we show all active hotels
+        // Access control happens during login
+        $hotels = Hotel::where('is_active', true)->orderBy('name')->get();
 
         return view('auth.login', compact('hotels'));
     }

@@ -98,6 +98,7 @@ class RoomController extends Controller
         $hotelId = session('hotel_id');
         $validated = $request->validate([
             'room_number' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('rooms')->where(fn ($query) => $query->where('hotel_id', $hotelId))],
+            'name' => 'nullable|string|max:255',
             'room_type_id' => ['required', 'exists:room_types,id', \Illuminate\Validation\Rule::exists('room_types', 'id')->where(fn ($query) => $query->where('hotel_id', $hotelId))],
             'status' => 'required|in:available,occupied,maintenance,cleaning',
             'floor' => 'nullable|integer',
@@ -179,6 +180,7 @@ class RoomController extends Controller
 
         $validated = $request->validate([
             'room_number' => ['required', 'string', 'max:255', \Illuminate\Validation\Rule::unique('rooms')->where(fn ($query) => $query->where('hotel_id', $hotelId))->ignore($room->id)],
+            'name' => 'nullable|string|max:255',
             'room_type_id' => ['required', 'exists:room_types,id', \Illuminate\Validation\Rule::exists('room_types', 'id')->where(fn ($query) => $query->where('hotel_id', $hotelId))],
             'status' => 'required|in:available,occupied,maintenance,cleaning',
             'cleaning_status' => 'nullable|in:dirty,cleaning,clean,inspected',

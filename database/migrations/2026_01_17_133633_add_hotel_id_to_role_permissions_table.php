@@ -15,13 +15,17 @@ return new class extends Migration
     {
         // First, drop foreign key constraints that depend on the unique index
         // Get the foreign key constraint names
-        $foreignKeys = DB::select("
-            SELECT CONSTRAINT_NAME 
-            FROM information_schema.KEY_COLUMN_USAGE 
-            WHERE TABLE_SCHEMA = DATABASE() 
-            AND TABLE_NAME = 'role_permissions' 
-            AND REFERENCED_TABLE_NAME IS NOT NULL
-        ");
+        $foreignKeys = [];
+        
+        if (DB::getDriverName() !== 'sqlite') {
+            $foreignKeys = DB::select("
+                SELECT CONSTRAINT_NAME 
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'role_permissions' 
+                AND REFERENCED_TABLE_NAME IS NOT NULL
+            ");
+        }
 
         foreach ($foreignKeys as $fk) {
             try {

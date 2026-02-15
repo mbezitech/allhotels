@@ -88,9 +88,14 @@ class User extends Authenticatable
             return true;
         }
 
-        // Check if user is the hotel owner - owners should always have access
+        // Check if user is the hotel owner - owners should always have access (if hotel is active)
         $hotel = \App\Models\Hotel::find($hotelId);
-        if ($hotel && $hotel->owner_id === $this->id) {
+        if (!$hotel || !$hotel->is_active) {
+            // Hotel doesn't exist or is disabled - non-super admins cannot access
+            return false;
+        }
+        
+        if ($hotel->owner_id === $this->id) {
             // If owner doesn't have a role assigned, assign admin role automatically
             $hasRole = $this->roles()
                 ->wherePivot('hotel_id', $hotelId)
@@ -125,6 +130,7 @@ class User extends Authenticatable
     public function accessibleHotels()
     {
         if ($this->isSuperAdmin()) {
+            // Super admins can see all hotels (including disabled ones)
             return Hotel::all();
         }
 
@@ -138,7 +144,10 @@ class User extends Authenticatable
             ->unique()
             ->filter();
 
-        return Hotel::whereIn('id', $hotelIds)->get();
+        // Filter out disabled hotels for non-super admins
+        return Hotel::whereIn('id', $hotelIds)
+            ->where('is_active', true)
+            ->get();
     }
 
     /**

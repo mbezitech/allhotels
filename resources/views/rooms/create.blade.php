@@ -132,6 +132,14 @@
         </div>
 
         <div class="form-group">
+            <label for="name">Room Name <span style="font-weight: normal; color: #666;">(Optional)</span></label>
+            <input type="text" id="name" name="name" value="{{ old('name') }}" placeholder="e.g. Ocean View Suite">
+            @error('name')
+                <span class="error">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <div class="form-group">
             <label for="room_type_id">Room Type *</label>
             <select id="room_type_id" name="room_type_id" required>
                 <option value="">-- Select Room Type --</option>

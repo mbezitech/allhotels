@@ -2,9 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Hotel;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Symfony\Component\HttpFoundation\Response;
 
 class HotelContext
@@ -36,6 +38,11 @@ class HotelContext
             // Super admin can access all hotels, hotel_id is optional
             if ($hotelId) {
                 $request->merge(['hotel_id' => $hotelId]);
+                $hotel = Hotel::find($hotelId);
+                if ($hotel && !empty($hotel->timezone)) {
+                    Config::set('app.timezone', $hotel->timezone);
+                    date_default_timezone_set($hotel->timezone);
+                }
             }
             return $next($request);
         }
@@ -57,6 +64,13 @@ class HotelContext
 
         // Make hotel_id available to all requests
         $request->merge(['hotel_id' => $hotelId]);
+
+        // Set application timezone to the hotel's timezone for this request
+        $hotel = Hotel::find($hotelId);
+        if ($hotel && !empty($hotel->timezone)) {
+            Config::set('app.timezone', $hotel->timezone);
+            date_default_timezone_set($hotel->timezone);
+        }
 
         return $next($request);
     }

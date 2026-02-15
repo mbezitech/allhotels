@@ -55,6 +55,26 @@
             @enderror
         </div>
 
+        <div style="margin-bottom: 20px;">
+            <label for="timezone" style="display: block; margin-bottom: 8px; font-weight: 500;">Timezone *</label>
+            <select id="timezone" name="timezone" required
+                    style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                @foreach($timezones ?? [] as $region => $zones)
+                    <optgroup label="{{ $region }}">
+                        @foreach($zones as $value => $label)
+                            <option value="{{ $value }}" {{ old('timezone', 'Africa/Nairobi') == $value ? 'selected' : '' }}>
+                                {{ $label }} ({{ $value }})
+                            </option>
+                        @endforeach
+                    </optgroup>
+                @endforeach
+            </select>
+            <small style="color: #666; display: block; margin-top: 5px;">Dates and times will be shown in this timezone for this hotel.</small>
+            @error('timezone')
+                <span style="color: #e74c3c; font-size: 13px; margin-top: 5px; display: block;">{{ $message }}</span>
+            @enderror
+        </div>
+
         <div style="display: flex; gap: 15px; margin-top: 30px;">
             <button type="submit" style="padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;">
                 Create Hotel

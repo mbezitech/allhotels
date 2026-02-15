@@ -42,13 +42,33 @@ class HotelController extends Controller
     }
 
     /**
+     * Get timezones grouped by region for dropdowns
+     */
+    public static function getTimezonesForSelect(): array
+    {
+        $list = [];
+        foreach (\DateTimeZone::listIdentifiers(\DateTimeZone::ALL) as $tz) {
+            $parts = explode('/', $tz, 2);
+            $region = $parts[0] ?? 'Other';
+            $city = $parts[1] ?? $tz;
+            $list[$region][$tz] = str_replace('_', ' ', $city);
+        }
+        ksort($list);
+        foreach ($list as $region => $zones) {
+            asort($list[$region]);
+        }
+        return $list;
+    }
+
+    /**
      * Show the form for creating a new hotel
      */
     public function create()
     {
         $this->ensureSuperAdmin();
         $owners = User::where('is_super_admin', false)->get();
-        return view('hotels.create', compact('owners'));
+        $timezones = self::getTimezonesForSelect();
+        return view('hotels.create', compact('owners', 'timezones'));
     }
 
     /**
@@ -63,6 +83,7 @@ class HotelController extends Controller
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'owner_id' => 'required|exists:users,id',
+            'timezone' => 'required|string|timezone',
         ]);
 
         $hotel = Hotel::create($validated);
@@ -95,6 +116,7 @@ class HotelController extends Controller
             'email' => $hotel->email,
             'owner_id' => $hotel->owner_id,
             'owner_name' => $owner ? $owner->name : null,
+            'timezone' => $hotel->timezone,
         ]);
 
         return redirect()->route('hotels.index')
@@ -131,7 +153,8 @@ class HotelController extends Controller
     {
         $this->ensureSuperAdmin();
         $owners = User::where('is_super_admin', false)->get();
-        return view('hotels.edit', compact('hotel', 'owners'));
+        $timezones = self::getTimezonesForSelect();
+        return view('hotels.edit', compact('hotel', 'owners', 'timezones'));
     }
 
     /**
@@ -146,6 +169,8 @@ class HotelController extends Controller
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'owner_id' => 'required|exists:users,id',
+            'is_active' => 'sometimes|boolean',
+            'timezone' => 'required|string|timezone',
         ]);
 
         // Capture old values before update
@@ -155,6 +180,8 @@ class HotelController extends Controller
             'phone' => $hotel->phone,
             'email' => $hotel->email,
             'owner_id' => $hotel->owner_id,
+            'is_active' => $hotel->is_active,
+            'timezone' => $hotel->timezone,
         ];
         
         $oldOwner = $hotel->owner;
@@ -187,6 +214,7 @@ class HotelController extends Controller
             'email' => $hotel->email,
             'owner_id' => $hotel->owner_id,
             'owner_name' => $newOwnerName ?: $oldOwnerName,
+            'timezone' => $hotel->timezone,
         ];
         
         // Build description with changes
@@ -205,6 +233,12 @@ class HotelController extends Controller
         }
         if ($validated['owner_id'] != $oldValues['owner_id']) {
             $changes[] = "owner: '{$oldOwnerName}' → '{$newOwnerName}'";
+        }
+        if (isset($validated['is_active']) && $validated['is_active'] != $oldValues['is_active']) {
+            $changes[] = "status: " . ($validated['is_active'] ? 'enabled' : 'disabled');
+        }
+        if (isset($validated['timezone']) && $validated['timezone'] != ($oldValues['timezone'] ?? null)) {
+            $changes[] = "timezone: '{$oldValues['timezone']}' → '{$validated['timezone']}'";
         }
         
         $description = "Updated hotel: {$hotel->name}";
@@ -232,9 +266,15 @@ class HotelController extends Controller
                 ->with('error', 'Hotel owners cannot delete their own hotel. Please contact a super admin.');
         }
         
-        // With soft deletes, we can still delete hotels with rooms/bookings
-        // but we'll show a warning message
-        $hasRoomsOrBookings = $hotel->rooms()->exists() || $hotel->bookings()->exists();
+        // Prevent deletion if hotel has bookings
+        $bookingCount = $hotel->bookings()->count();
+        if ($bookingCount > 0) {
+            return redirect()->route('hotels.index')
+                ->with('error', "Cannot delete hotel: it has {$bookingCount} booking(s). Please cancel or complete all bookings before deleting the hotel.");
+        }
+        
+        // Check if hotel has rooms (informational, but allow deletion)
+        $hasRooms = $hotel->rooms()->exists();
         
         // Capture hotel details before deletion
         $hotelName = $hotel->name;
@@ -261,7 +301,7 @@ class HotelController extends Controller
                 $hotel->delete();
             });
             
-            $message = $hasRoomsOrBookings 
+            $message = $hasRooms 
                 ? 'Hotel soft deleted successfully. The hotel can be restored later.'
                 : 'Hotel deleted successfully.';
             
@@ -353,6 +393,60 @@ class HotelController extends Controller
             return redirect()->route('hotels.index', ['trashed' => true])
                 ->with('error', 'Failed to permanently delete hotel: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Enable a hotel
+     */
+    public function enable($id)
+    {
+        $this->ensureSuperAdmin();
+        
+        $hotel = Hotel::findOrFail($id);
+        
+        if ($hotel->is_active) {
+            return redirect()->route('hotels.index')
+                ->with('info', 'Hotel is already enabled.');
+        }
+        
+        $hotel->is_active = true;
+        $hotel->save();
+        
+        logActivity('updated', $hotel, "Enabled hotel: {$hotel->name}", [
+            'is_active' => false,
+        ], [
+            'is_active' => true,
+        ]);
+        
+        return redirect()->route('hotels.index')
+            ->with('success', 'Hotel enabled successfully.');
+    }
+
+    /**
+     * Disable a hotel
+     */
+    public function disable($id)
+    {
+        $this->ensureSuperAdmin();
+        
+        $hotel = Hotel::findOrFail($id);
+        
+        if (!$hotel->is_active) {
+            return redirect()->route('hotels.index')
+                ->with('info', 'Hotel is already disabled.');
+        }
+        
+        $hotel->is_active = false;
+        $hotel->save();
+        
+        logActivity('updated', $hotel, "Disabled hotel: {$hotel->name}", [
+            'is_active' => true,
+        ], [
+            'is_active' => false,
+        ]);
+        
+        return redirect()->route('hotels.index')
+            ->with('success', 'Hotel disabled successfully.');
     }
 
     /**
