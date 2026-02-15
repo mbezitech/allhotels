@@ -232,11 +232,7 @@
                         <span class="nav-section-toggle">▼</span>
                     </li>
                     <div class="nav-section-items">
-                        <li class="nav-item">
-                            <a href="{{ route('links.index') }}" class="nav-link {{ request()->routeIs('links.*') ? 'active' : '' }}">
-                                Link References
-                            </a>
-                        </li>
+
                         <li class="nav-item">
                             <a href="{{ route('rooms.index') }}" class="nav-link {{ request()->routeIs('rooms.*') ? 'active' : '' }}">
                                 Rooms
