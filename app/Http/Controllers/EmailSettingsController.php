@@ -100,6 +100,9 @@ class EmailSettingsController extends Controller
             unset($validated['smtp_password']);
         }
         
+        // Add hotel_id to validated data
+        $validated['hotel_id'] = $hotelId;
+        
         // Get existing settings to preserve password if not updating
         $existing = EmailSettings::where('hotel_id', $hotelId)->first();
         
