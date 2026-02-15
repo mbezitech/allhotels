@@ -436,6 +436,37 @@ class BookingController extends Controller
             } elseif ($validated['status'] === 'cancelled') {
                 $reason = $validated['cancellation_reason'] ?? 'No reason provided';
                 logActivity('cancelled', $booking, "Booking cancelled: {$booking->guest_name} - Reason: {$reason}", null, ['status' => $oldStatus], ['status' => 'cancelled']);
+                
+                // Send cancellation email if guest email is provided
+                if (!empty($booking->guest_email)) {
+                    try {
+                        $hotelId = session('hotel_id') ?? $booking->hotel_id;
+                        $emailSent = HotelMailService::send(
+                            $hotelId,
+                            $booking->guest_email,
+                            "Booking Cancellation - {$booking->booking_reference}",
+                            'emails.booking_cancellation',
+                            ['booking' => $booking->load('room.roomType', 'hotel')]
+                        );
+                        
+                        if ($emailSent) {
+                            Log::info('Booking cancellation email sent', [
+                                'booking_id' => $booking->id,
+                                'guest_email' => $booking->guest_email,
+                            ]);
+                        } else {
+                            Log::warning('Booking cancellation email not sent - email settings not configured', [
+                                'booking_id' => $booking->id,
+                                'hotel_id' => $hotelId,
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send booking cancellation email', [
+                            'booking_id' => $booking->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
             } else {
                 logActivity('updated', $booking, "Booking status changed from {$oldStatus} to {$validated['status']} - Booking #{$booking->id}", null, ['status' => $oldStatus], ['status' => $validated['status']]);
             }
