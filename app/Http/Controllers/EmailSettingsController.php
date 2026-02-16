@@ -74,6 +74,12 @@ class EmailSettingsController extends Controller
             'from_email' => 'nullable|email|max:255',
             'from_name' => 'nullable|string|max:255',
             'notification_email' => 'nullable|email|max:255',
+            'notify_booking' => 'boolean',
+            'booking_notification_email' => 'nullable|string',
+            'notify_cancellation' => 'boolean',
+            'cancellation_notification_email' => 'nullable|string',
+            'notify_payment' => 'boolean',
+            'payment_notification_email' => 'nullable|string',
         ]);
         
         // If enabled, require essential fields

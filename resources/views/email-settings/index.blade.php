@@ -228,9 +228,80 @@
             </div>
 
             <div class="form-group">
-                <label for="notification_email">Notification Email</label>
+                <label for="notification_email">System Admin Notification Email</label>
                 <input type="email" id="notification_email" name="notification_email" value="{{ old('notification_email', $emailSettings->notification_email) }}" placeholder="notifications@hotel.com">
-                <small style="color: #666; display: block; margin-top: 5px;">Email address to receive system notifications for this hotel</small>
+                <small style="color: #666; display: block; margin-top: 5px;">Primary email address to receive general system notifications</small>
+            </div>
+
+            <div style="margin-top: 30px; border-top: 2px solid #f0f0f0; padding-top: 20px;">
+                <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Hotel Notification Settings</h3>
+                <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Configure which notifications staff should receive and where. Separate multiple emails with commas.</p>
+
+                <!-- Booking Notifications -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e9ecef;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                        <div>
+                            <h4 style="margin: 0; color: #2c3e50; display: flex; align-items: center; gap: 8px;">
+                                <span>📧 Booking Notifications</span>
+                            </h4>
+                            <p style="margin: 5px 0 0 0; font-size: 13px; color: #6c757d;">Received when a new booking is created.</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="hidden" name="notify_booking" value="0">
+                            <input type="checkbox" name="notify_booking" value="1" {{ old('notify_booking', $emailSettings->notify_booking ?? true) ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="booking_notification_email" style="font-size: 13px;">Recipient Emails</label>
+                        <input type="text" id="booking_notification_email" name="booking_notification_email" value="{{ old('booking_notification_email', $emailSettings->booking_notification_email) }}" placeholder="staff1@hotel.com, manager@hotel.com">
+                        <small style="color: #6c757d; font-size: 11px;">Leave blank to use System Admin Notification email.</small>
+                    </div>
+                </div>
+
+                <!-- Cancellation Notifications -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e9ecef;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                        <div>
+                            <h4 style="margin: 0; color: #2c3e50; display: flex; align-items: center; gap: 8px;">
+                                <span>📧 Cancellation Notifications</span>
+                            </h4>
+                            <p style="margin: 5px 0 0 0; font-size: 13px; color: #6c757d;">Received when a booking is cancelled.</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="hidden" name="notify_cancellation" value="0">
+                            <input type="checkbox" name="notify_cancellation" value="1" {{ old('notify_cancellation', $emailSettings->notify_cancellation ?? true) ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="cancellation_notification_email" style="font-size: 13px;">Recipient Emails</label>
+                        <input type="text" id="cancellation_notification_email" name="cancellation_notification_email" value="{{ old('cancellation_notification_email', $emailSettings->cancellation_notification_email) }}" placeholder="staff1@hotel.com, manager@hotel.com">
+                        <small style="color: #6c757d; font-size: 11px;">Leave blank to use System Admin Notification email.</small>
+                    </div>
+                </div>
+
+                <!-- Payment Notifications -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                        <div>
+                            <h4 style="margin: 0; color: #2c3e50; display: flex; align-items: center; gap: 8px;">
+                                <span>📧 Payment Notifications</span>
+                            </h4>
+                            <p style="margin: 5px 0 0 0; font-size: 13px; color: #6c757d;">Received when a payment is recorded.</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="hidden" name="notify_payment" value="0">
+                            <input type="checkbox" name="notify_payment" value="1" {{ old('notify_payment', $emailSettings->notify_payment ?? true) ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="payment_notification_email" style="font-size: 13px;">Recipient Emails</label>
+                        <input type="text" id="payment_notification_email" name="payment_notification_email" value="{{ old('payment_notification_email', $emailSettings->payment_notification_email) }}" placeholder="accountant@hotel.com">
+                        <small style="color: #6c757d; font-size: 11px;">Leave blank to use System Admin Notification email.</small>
+                    </div>
+                </div>
             </div>
         </div>
 

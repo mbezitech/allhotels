@@ -19,11 +19,20 @@ class EmailSettings extends Model
         'from_email',
         'from_name',
         'notification_email',
+        'notify_booking',
+        'booking_notification_email',
+        'notify_cancellation',
+        'cancellation_notification_email',
+        'notify_payment',
+        'payment_notification_email',
     ];
 
     protected $casts = [
         'enabled' => 'boolean',
         'smtp_port' => 'integer',
+        'notify_booking' => 'boolean',
+        'notify_cancellation' => 'boolean',
+        'notify_payment' => 'boolean',
     ];
 
     /**

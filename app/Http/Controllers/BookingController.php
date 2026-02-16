@@ -237,6 +237,7 @@ class BookingController extends Controller
         // Send confirmation email if guest email is provided
         if (!empty($booking->guest_email)) {
             try {
+                $hotelId = session('hotel_id') ?? $booking->hotel_id;
                 $emailSent = HotelMailService::send(
                     $hotelId,
                     $booking->guest_email,
@@ -262,6 +263,23 @@ class BookingController extends Controller
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+
+        // Always notify hotel staff about new booking
+        try {
+            $hotelId = session('hotel_id') ?? $booking->hotel_id;
+            HotelMailService::sendNotification(
+                $hotelId,
+                'booking',
+                "New Booking Recieved - {$booking->booking_reference}",
+                'emails.hotel_booking_notification',
+                ['booking' => $booking->load('room.roomType', 'hotel')]
+            );
+        } catch (\Exception $e) {
+            Log::error('Failed to send hotel booking notification', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return redirect()->route('bookings.index')
@@ -466,6 +484,23 @@ class BookingController extends Controller
                             'error' => $e->getMessage(),
                         ]);
                     }
+                }
+
+                // Always notify hotel staff about cancellation
+                try {
+                    $hotelId = session('hotel_id') ?? $booking->hotel_id;
+                    HotelMailService::sendNotification(
+                        $hotelId,
+                        'cancellation',
+                        "Booking Cancelled - {$booking->booking_reference}",
+                        'emails.hotel_cancellation_notification',
+                        ['booking' => $booking->load('room.roomType', 'hotel')]
+                    );
+                } catch (\Exception $e) {
+                    Log::error('Failed to send hotel cancellation notification', [
+                        'booking_id' => $booking->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             } else {
                 logActivity('updated', $booking, "Booking status changed from {$oldStatus} to {$validated['status']} - Booking #{$booking->id}", null, ['status' => $oldStatus], ['status' => $validated['status']]);

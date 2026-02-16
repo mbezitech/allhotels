@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\PosSale;
+use App\Services\HotelMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -234,6 +236,15 @@ class PaymentController extends Controller
             'booking_id' => $bookingId,
             'pos_sale_id' => $posSaleId,
         ]);
+
+        // Notify hotel staff about the payment
+        HotelMailService::sendNotification(
+            $hotelId,
+            'payment',
+            "Payment Received - " . ($bookingId ? "Booking #{$bookingId}" : "POS Sale #{$posSaleId}"),
+            'emails.hotel_payment_notification',
+            ['payment' => $payment->load('booking', 'posSale', 'receivedBy', 'hotel')]
+        );
 
         $redirectRoute = $bookingId 
             ? route('bookings.show', $bookingId)
