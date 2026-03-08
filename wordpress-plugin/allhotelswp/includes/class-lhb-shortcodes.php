@@ -82,13 +82,14 @@ class LHB_Shortcodes {
 		}
 
 		$room_types = isset($api_response['data']) ? $api_response['data'] : $api_response;
+		$layout = get_option( 'lhb_room_type_layout', 'grid' );
 
 		ob_start();
 
 		if ( empty( $room_types ) || ! is_array( $room_types ) ) {
 			echo '<p>No room types found for this hotel.</p>';
 		} else {
-			echo '<div class="lhb-room-types-container">';
+			echo '<div class="lhb-room-types-container lhb-layout-' . esc_attr( $layout ) . '">';
 			foreach ( $room_types as $room_type ) {
 				include LHB_PLUGIN_DIR . 'templates/room-types-list.php';
 			}

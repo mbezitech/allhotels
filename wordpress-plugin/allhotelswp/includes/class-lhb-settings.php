@@ -31,6 +31,7 @@ class LHB_Settings {
 		register_setting( 'lhb_options', 'lhb_api_url' );
 		register_setting( 'lhb_options', 'lhb_hotel_slug' );
 		register_setting( 'lhb_options', 'lhb_rooms_page_url' );
+		register_setting( 'lhb_options', 'lhb_room_type_layout' );
 
 		add_settings_section(
 			'lhb_section_api',
@@ -62,6 +63,14 @@ class LHB_Settings {
 			'allhotelswp',
 			'lhb_section_api'
 		);
+
+		add_settings_field(
+			'lhb_room_type_layout',
+			'Room Type Display Layout',
+			array( $this, 'field_room_type_layout_callback' ),
+			'allhotelswp',
+			'lhb_section_api'
+		);
 	}
 
 	public function section_api_callback() {
@@ -82,5 +91,16 @@ class LHB_Settings {
 		$val = get_option( 'lhb_rooms_page_url', '' );
 		echo '<input type="url" name="lhb_rooms_page_url" value="' . esc_attr( $val ) . '" class="regular-text" placeholder="https://yourwebsite.com/rooms" />';
 		echo '<p class="description">Optional: If your [laravel_hotel_rooms] shortcode is on a different page, enter its URL here.</p>';
+	}
+
+	public function field_room_type_layout_callback() {
+		$val = get_option( 'lhb_room_type_layout', 'grid' );
+		?>
+		<select name="lhb_room_type_layout">
+			<option value="grid" <?php selected( $val, 'grid' ); ?>>Modern Grid (2 Columns)</option>
+			<option value="list" <?php selected( $val, 'list' ); ?>>Classic List</option>
+		</select>
+		<p class="description">Select the display style for the [laravel_hotel_room_types] shortcode.</p>
+		<?php
 	}
 }
