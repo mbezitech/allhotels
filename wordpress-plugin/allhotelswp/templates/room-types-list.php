@@ -25,7 +25,7 @@ $featured_image = !empty($images) ? $api_url . $images[0] : '';
 	</div>
 
 	<!-- Action linking to the booking page (can be customized by user) -->
-	<div style="margin-top:15px;">
-		<a href="#book-now" class="lhb-submit-btn" style="text-decoration:none; display:inline-block;">Check Availability</a>
+	<div style="margin-top:auto; padding-top:15px;">
+		<a href="<?php echo esc_url( add_query_arg( 'room_type_id', $room_type['id'] ) ); ?>#lhb-rooms-search" class="lhb-submit-btn" style="text-decoration:none; display:inline-block;">Check Availability</a>
 	</div>
 </div>

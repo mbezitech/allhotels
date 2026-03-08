@@ -7,7 +7,7 @@ class LHB_Settings {
 			'allhotelswp Settings', 
 			'allhotelswp', 
 			'manage_options', 
-			'laravel-hotel-booking', 
+			'allhotelswp', 
 			array( $this, 'display_plugin_setup_page' )
 		);
 	}
@@ -19,7 +19,7 @@ class LHB_Settings {
 			<form action="options.php" method="post">
 				<?php 
 				settings_fields( 'lhb_options' );
-				do_settings_sections( 'laravel-hotel-booking' );
+				do_settings_sections( 'allhotelswp' );
 				submit_button();
 				?>
 			</form>
@@ -35,14 +35,14 @@ class LHB_Settings {
 			'lhb_section_api',
 			'API Configuration',
 			array( $this, 'section_api_callback' ),
-			'laravel-hotel-booking'
+			'allhotelswp'
 		);
 
 		add_settings_field(
 			'lhb_api_url',
 			'Laravel API Base URL',
 			array( $this, 'field_api_url_callback' ),
-			'laravel-hotel-booking',
+			'allhotelswp',
 			'lhb_section_api'
 		);
 
@@ -50,7 +50,7 @@ class LHB_Settings {
 			'lhb_hotel_slug',
 			'Hotel Slug',
 			array( $this, 'field_hotel_slug_callback' ),
-			'laravel-hotel-booking',
+			'allhotelswp',
 			'lhb_section_api'
 		);
 	}

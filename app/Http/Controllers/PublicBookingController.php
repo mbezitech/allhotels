@@ -211,6 +211,10 @@ class PublicBookingController extends Controller
             $roomsQuery = Room::where('hotel_id', $hotel->id)
                 ->where('status', 'available')
                 ->with('roomType');
+
+            if ($request->has('room_type_id')) {
+                $roomsQuery->where('room_type_id', $request->get('room_type_id'));
+            }
                 
             $rooms = $roomsQuery->get();
             

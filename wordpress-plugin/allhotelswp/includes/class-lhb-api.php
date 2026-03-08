@@ -19,23 +19,27 @@ class LHB_API {
 	 * Fetch available rooms from Laravel
 	 * Expects a JSON response from /api/hotels/{slug}/rooms
 	 */
-	public function get_rooms($check_in = '', $check_out = '') {
+	public function get_rooms($check_in = '', $check_out = '', $room_type_id = '') {
 		if ( ! $this->is_configured() ) {
-			return new WP_Error( 'not_configured', 'Laravel API is not configured.' );
+			return new WP_Error( 'not_configured', 'allhotelswp API is not configured.' );
 		}
 
 		$endpoint = $this->api_url . '/api/hotels/' . $this->hotel_slug . '/rooms';
 		
-		// Optional: append dates for availability checking
-		if ( $check_in && $check_out ) {
-			$endpoint = add_query_arg( array(
-				'check_in' => $check_in,
-				'check_out' => $check_out
-			), $endpoint );
+		$args = array();
+		if ( $check_in ) $args['check_in'] = $check_in;
+		if ( $check_out ) $args['check_out'] = $check_out;
+		if ( $room_type_id ) $args['room_type_id'] = $room_type_id;
+
+		if ( ! empty( $args ) ) {
+			$endpoint = add_query_arg( $args, $endpoint );
 		}
 
 		$response = wp_remote_get( $endpoint, array(
 			'timeout' => 15,
+			'headers' => array(
+				'Accept' => 'application/json',
+			),
 		) );
 
 		if ( is_wp_error( $response ) ) {

@@ -18,24 +18,28 @@ class LHB_Shortcodes {
 			return '<p>Laravel Hotel Booking API is not configured. Please open WP Admin Settings.</p>';
 		}
 
-		// Optionally grab check-in and check-out dates from URL query params
+		// Optionally grab check-in, check-out, and room_type dates from URL query params
 		$check_in = isset($_GET['check_in']) ? sanitize_text_field($_GET['check_in']) : '';
 		$check_out = isset($_GET['check_out']) ? sanitize_text_field($_GET['check_out']) : '';
+		$room_type_id = isset($_GET['room_type_id']) ? sanitize_text_field($_GET['room_type_id']) : '';
 
-		$api_response = $api->get_rooms($check_in, $check_out);
+		$api_response = $api->get_rooms($check_in, $check_out, $room_type_id);
 
 		if ( is_wp_error( $api_response ) ) {
 			return '<p>Error fetching rooms: ' . esc_html( $api_response->get_error_message() ) . '</p>';
 		}
 
-		// Expected payload logic based on an imaginary structured JSON from Laravel
 		$rooms = isset($api_response['data']) ? $api_response['data'] : $api_response;
 
 		ob_start();
+
+		if ( ! empty( $room_type_id ) ) {
+			echo '<p style="margin-bottom:15px;">Showing results for selected room type. <a href="' . esc_url( remove_query_arg( 'room_type_id' ) ) . '">Show all types</a></p>';
+		}
 		
 		// Render form to filter by dates
 		?>
-		<form method="get" class="lhb-search-form">
+		<form method="get" class="lhb-search-form" id="lhb-rooms-search">
 			<div class="lhb-form-group">
 				<label>Check In</label>
 				<input type="date" name="check_in" value="<?php echo esc_attr($check_in); ?>" required />
