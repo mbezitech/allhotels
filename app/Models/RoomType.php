@@ -41,4 +41,25 @@ class RoomType extends Model
     {
         return $this->hasMany(Room::class, 'room_type_id');
     }
+
+    /**
+     * Get the display image (featured image or first room image)
+     */
+    public function getDisplayImageAttribute()
+    {
+        if ($this->featured_image) {
+            return $this->featured_image;
+        }
+
+        $firstRoom = $this->rooms()
+            ->whereNotNull('images')
+            ->where('images', '!=', '[]')
+            ->first();
+
+        if ($firstRoom && !empty($firstRoom->images)) {
+            return $firstRoom->images[0];
+        }
+
+        return null;
+    }
 }
