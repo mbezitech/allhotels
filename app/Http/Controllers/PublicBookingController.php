@@ -165,6 +165,29 @@ class PublicBookingController extends Controller
     }
 
     /**
+     * API Get room types (for WordPress plugin)
+     */
+    public function apiGetRoomTypes(Request $request, string $hotelSlug)
+    {
+        try {
+            $hotel = Hotel::where('slug', $hotelSlug)->firstOrFail();
+            
+            $roomTypes = \App\Models\RoomType::where('hotel_id', $hotel->id)->get();
+            
+            return response()->json([
+                'status' => 'success',
+                'data' => $roomTypes
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hotel not found or an error occurred.',
+            ], 404);
+        }
+    }
+
+    /**
      * API Get available rooms (for WordPress plugin)
      */
     public function apiGetRooms(Request $request, string $hotelSlug)

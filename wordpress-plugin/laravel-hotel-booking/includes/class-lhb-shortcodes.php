@@ -59,5 +59,36 @@ class LHB_Shortcodes {
 		}
 
 		return ob_get_clean();
+		return ob_get_clean();
+	}
+
+	public function render_room_types_shortcode( $atts ) {
+		$api = new LHB_API();
+
+		if ( ! $api->is_configured() ) {
+			return '<p>Laravel Hotel Booking API is not configured. Please open WP Admin Settings.</p>';
+		}
+
+		$api_response = $api->get_room_types();
+
+		if ( is_wp_error( $api_response ) ) {
+			return '<p>Error fetching room types: ' . esc_html( $api_response->get_error_message() ) . '</p>';
+		}
+
+		$room_types = isset($api_response['data']) ? $api_response['data'] : $api_response;
+
+		ob_start();
+
+		if ( empty( $room_types ) || ! is_array( $room_types ) ) {
+			echo '<p>No room types found for this hotel.</p>';
+		} else {
+			echo '<div class="lhb-room-types-container">';
+			foreach ( $room_types as $room_type ) {
+				include LHB_PLUGIN_DIR . 'templates/room-types-list.php';
+			}
+			echo '</div>';
+		}
+
+		return ob_get_clean();
 	}
 }

@@ -53,6 +53,35 @@ class LHB_API {
 	}
 
 	/**
+	 * Fetch room types from Laravel
+	 * Expects a JSON response from /api/hotels/{slug}/room-types
+	 */
+	public function get_room_types() {
+		if ( ! $this->is_configured() ) {
+			return new WP_Error( 'not_configured', 'Laravel API is not configured.' );
+		}
+
+		$endpoint = $this->api_url . '/api/hotels/' . $this->hotel_slug . '/room-types';
+
+		$response = wp_remote_get( $endpoint, array(
+			'timeout' => 15,
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$body = wp_remote_retrieve_body( $response );
+		$data = json_decode( $body, true );
+
+		if ( wp_remote_retrieve_response_code( $response ) !== 200 ) {
+			return new WP_Error( 'api_error', isset($data['message']) ? $data['message'] : 'Failed to fetch room types.' );
+		}
+
+		return $data;
+	}
+
+	/**
 	 * Submit a booking to Laravel
 	 * Expects POST request to /api/hotels/{slug}/rooms/{id}/book
 	 */

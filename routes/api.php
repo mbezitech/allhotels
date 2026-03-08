@@ -10,5 +10,6 @@ Route::get('/user', function (Request $request) {
 // Public API routes for WordPress integration
 Route::prefix('hotels/{hotel_slug}')->group(function () {
     Route::get('/rooms', [\App\Http\Controllers\PublicBookingController::class, 'apiGetRooms']);
+    Route::get('/room-types', [\App\Http\Controllers\PublicBookingController::class, 'apiGetRoomTypes']);
     Route::post('/rooms/{room_id}/book', [\App\Http\Controllers\PublicBookingController::class, 'apiStore']);
 });

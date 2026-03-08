@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       Laravel Hotel Booking Integration
- * Description:       A production-ready plugin to connect WordPress with your Laravel booking API.
+ * Plugin Name:       allhotelswp
+ * Description:       A production-ready plugin to connect WordPress with your Laravel booking API. Contact: +255 718 248 257
  * Version:           1.0.0
- * Author:            Your Name
+ * Author:            Inocent Mhina
  * License:           GPL-2.0+
  * Text Domain:       laravel-hotel-booking
  */
@@ -43,6 +43,7 @@ class Laravel_Hotel_Booking {
 	private function define_public_hooks() {
 		$shortcodes = new LHB_Shortcodes();
 		add_shortcode( 'laravel_hotel_rooms', array( $shortcodes, 'render_rooms_shortcode' ) );
+		add_shortcode( 'laravel_hotel_room_types', array( $shortcodes, 'render_room_types_shortcode' ) );
 		
 		// Enqueue scripts
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
