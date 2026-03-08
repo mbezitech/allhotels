@@ -165,39 +165,147 @@ class PublicBookingController extends Controller
     }
 
     /**
-     * Check room availability via AJAX
+     * API Get available rooms (for WordPress plugin)
      */
-    public function checkAvailability(Request $request, string $hotelSlug, int $roomId)
+    public function apiGetRooms(Request $request, string $hotelSlug)
     {
-        $hotel = Hotel::where('slug', $hotelSlug)->firstOrFail();
-        $room = Room::where('id', $roomId)
-            ->where('hotel_id', $hotel->id)
-            ->firstOrFail();
+        try {
+            $hotel = Hotel::where('slug', $hotelSlug)->firstOrFail();
+            
+            $checkIn = $request->get('check_in');
+            $checkOut = $request->get('check_out');
+            
+            $roomsQuery = Room::where('hotel_id', $hotel->id)
+                ->where('status', 'available')
+                ->with('roomType');
+                
+            $rooms = $roomsQuery->get();
+            
+            if ($checkIn && $checkOut) {
+                // Validate dates if both provided
+                $request->merge(['check_in' => $checkIn, 'check_out' => $checkOut]);
+                try {
+                    $request->validate([
+                        'check_in' => 'required|date|after_or_equal:today',
+                        'check_out' => 'required|date|after:check_in',
+                    ]);
+                    
+                    $rooms = $rooms->filter(function ($room) use ($checkIn, $checkOut) {
+                        return $room->isAvailableForDates($checkIn, $checkOut);
+                    });
+                } catch (ValidationException $e) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Invalid dates provided.',
+                        'errors' => $e->errors()
+                    ], 422);
+                }
+            }
+            
+            // Re-index array after filtering
+            return response()->json([
+                'status' => 'success',
+                'data' => array_values($rooms->toArray())
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hotel not found or an error occurred.',
+            ], 404);
+        }
+    }
 
-        $request->validate([
-            'check_in' => 'required|date|after_or_equal:today',
-            'check_out' => 'required|date|after:check_in',
-        ]);
+    /**
+     * API Store booking (for WordPress plugin)
+     */
+    public function apiStore(Request $request, string $hotelSlug, int $roomId)
+    {
+        try {
+            $hotel = Hotel::where('slug', $hotelSlug)->firstOrFail();
+            $room = Room::where('id', $roomId)
+                ->where('hotel_id', $hotel->id)
+                ->where('status', 'available')
+                ->firstOrFail();
 
-        $isAvailable = $room->isAvailableForDates($request->check_in, $request->check_out);
+            $validated = $request->validate([
+                'guest_name' => 'required|string|max:255',
+                'guest_email' => 'required|email|max:255',
+                'guest_phone' => 'required|string|max:255',
+                'check_in' => 'required|date|after_or_equal:today',
+                'check_out' => 'required|date|after:check_in',
+                'adults' => 'required|integer|min:1',
+                'children' => 'nullable|integer|min:0',
+            ]);
 
-        if ($isAvailable) {
-            $checkIn = Carbon::parse($request->check_in);
-            $checkOut = Carbon::parse($request->check_out);
+            // Check total guests don't exceed room capacity
+            $totalGuests = $validated['adults'] + ($validated['children'] ?? 0);
+            if ($totalGuests > $room->capacity) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Total guests cannot exceed room capacity of {$room->capacity}."
+                ], 422);
+            }
+
+            // Check room availability
+            if (!$room->isAvailableForDates($validated['check_in'], $validated['check_out'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Room is not available for the selected dates.'
+                ], 422);
+            }
+
+            // Calculate total amount based on number of nights
+            $checkIn = Carbon::parse($validated['check_in']);
+            $checkOut = Carbon::parse($validated['check_out']);
             $nights = $checkIn->diffInDays($checkOut);
             $totalAmount = $room->price_per_night * $nights;
 
-            return response()->json([
-                'available' => true,
-                'nights' => $nights,
-                'price_per_night' => $room->price_per_night,
+            // Create booking
+            $booking = Booking::create([
+                'hotel_id' => $hotel->id,
+                'room_id' => $room->id,
+                'guest_name' => $validated['guest_name'],
+                'guest_email' => $validated['guest_email'],
+                'guest_phone' => $validated['guest_phone'],
+                'check_in' => $validated['check_in'],
+                'check_out' => $validated['check_out'],
+                'adults' => $validated['adults'],
+                'children' => $validated['children'] ?? 0,
                 'total_amount' => $totalAmount,
+                'status' => 'pending', // Guest bookings start as pending
+                'source' => 'api',
+                'created_by' => null,
+                'notes' => 'Booked via external API (WordPress plugin).',
             ]);
-        }
 
-        return response()->json([
-            'available' => false,
-            'message' => 'Room is not available for the selected dates.',
-        ]);
+            // Always log api bookings
+            logSystemActivity('created', $booking, "Guest booking created via API: {$booking->guest_name} - Room {$room->room_number}", [
+                'booking_reference' => $booking->booking_reference,
+                'is_guest_booking' => true,
+                'check_in' => $booking->check_in->format('Y-m-d'),
+                'check_out' => $booking->check_out->format('Y-m-d'),
+                'source' => 'api'
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Booking created successfully.',
+                'booking_reference' => $booking->booking_reference,
+                'total_amount' => $totalAmount
+            ], 201);
+            
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Hotel or room not found, or an error occurred.',
+            ], 404);
+        }
     }
 }

@@ -35,6 +35,11 @@
             <span style="font-weight: 600;">{{ $hotel->name }}</span>
         </div>
 
+        <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee;">
+            <span style="font-weight: 500; color: #666;">Slug (for API):</span>
+            <span style="font-weight: 600; font-family: monospace;">{{ $hotel->slug }}</span>
+        </div>
+
         @if($hotel->address)
             <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee;">
                 <span style="font-weight: 500; color: #666;">Address:</span>
