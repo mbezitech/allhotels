@@ -59,7 +59,6 @@ class LHB_Shortcodes {
 		}
 
 		return ob_get_clean();
-		return ob_get_clean();
 	}
 
 	public function render_room_types_shortcode( $atts ) {
