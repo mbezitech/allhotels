@@ -32,12 +32,36 @@ class LHB_Settings {
 		register_setting( 'lhb_options', 'lhb_hotel_slug' );
 		register_setting( 'lhb_options', 'lhb_rooms_page_url' );
 		register_setting( 'lhb_options', 'lhb_room_type_layout' );
+		register_setting( 'lhb_options', 'lhb_theme_color' );
 
 		add_settings_section(
 			'lhb_section_api',
 			'API Configuration',
 			array( $this, 'section_api_callback' ),
 			'allhotelswp'
+		);
+
+		add_settings_section(
+			'lhb_section_design',
+			'Design Settings',
+			array( $this, 'section_design_callback' ),
+			'allhotelswp'
+		);
+
+		add_settings_field(
+			'lhb_theme_color',
+			'Primary Theme Color',
+			array( $this, 'field_theme_color_callback' ),
+			'allhotelswp',
+			'lhb_section_design'
+		);
+
+		add_settings_field(
+			'lhb_room_type_layout',
+			'Room Type Display Layout',
+			array( $this, 'field_room_type_layout_callback' ),
+			'allhotelswp',
+			'lhb_section_design'
 		);
 
 		add_settings_field(
@@ -63,18 +87,27 @@ class LHB_Settings {
 			'allhotelswp',
 			'lhb_section_api'
 		);
-
-		add_settings_field(
-			'lhb_room_type_layout',
-			'Room Type Display Layout',
-			array( $this, 'field_room_type_layout_callback' ),
-			'allhotelswp',
-			'lhb_section_api'
-		);
 	}
 
 	public function section_api_callback() {
 		echo 'Enter your Laravel application details below. The API Base URL should be the root URL (e.g., https://yourlaravelapp.com).';
+	}
+
+	public function section_design_callback() {
+		echo 'Customize the look and feel of your hotel booking elements.';
+	}
+
+	public function field_theme_color_callback() {
+		$val = get_option( 'lhb_theme_color', '#3182ce' );
+		?>
+		<input type="text" name="lhb_theme_color" value="<?php echo esc_attr( $val ); ?>" class="lhb-color-picker" />
+		<p class="description">Select your primary brand color for buttons and accents.</p>
+		<script>
+            jQuery(document).ready(function($){
+                $('.lhb-color-picker').wpColorPicker();
+            });
+        </script>
+		<?php
 	}
 
 	public function field_api_url_callback() {

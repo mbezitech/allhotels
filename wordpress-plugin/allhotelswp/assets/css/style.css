@@ -8,6 +8,11 @@
     align-items: flex-end;
 }
 
+:root {
+    --lhb-primary-color: #3182ce;
+    --lhb-primary-hover: #2b6cb0;
+}
+
 .lhb-form-group {
     display: flex;
     flex-direction: column;
@@ -62,7 +67,7 @@
 
 .lhb-submit-btn,
 .lhb-search-form button {
-    background: #0073aa;
+    background: var(--lhb-primary-color);
     color: #fff;
     border: none;
     padding: 12px 20px;
@@ -74,7 +79,7 @@
 
 .lhb-submit-btn:hover,
 .lhb-search-form button:hover {
-    background: #005177;
+    background: var(--lhb-primary-hover);
 }
 
 .lhb-form-message {
@@ -195,7 +200,7 @@
 }
 
 .lhb-submit-btn {
-    background: #3182ce;
+    background: var(--lhb-primary-color);
     font-weight: 600;
     padding: 12px 24px;
     border-radius: 8px;
@@ -203,7 +208,7 @@
 }
 
 .lhb-submit-btn:hover {
-    background: #2b6cb0;
+    background: var(--lhb-primary-hover);
 }
 
 @media (max-width: 992px) {
