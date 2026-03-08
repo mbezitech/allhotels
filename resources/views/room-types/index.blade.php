@@ -118,7 +118,7 @@
                     @endif
                     <td>
                         @if($roomType->featured_image)
-                            <img src="{{ url($roomType->featured_image) }}" class="room-type-thumb" alt="{{ $roomType->name }}">
+                            <img src="{{ $roomType->featured_image }}" class="room-type-thumb" alt="{{ $roomType->name }}">
                         @else
                             <div class="room-type-thumb" style="display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #ccc; font-size: 10px;">No Image</div>
                         @endif
