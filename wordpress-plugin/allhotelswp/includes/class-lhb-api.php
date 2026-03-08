@@ -65,6 +65,9 @@ class LHB_API {
 
 		$response = wp_remote_get( $endpoint, array(
 			'timeout' => 15,
+			'headers' => array(
+				'Accept' => 'application/json',
+			),
 		) );
 
 		if ( is_wp_error( $response ) ) {

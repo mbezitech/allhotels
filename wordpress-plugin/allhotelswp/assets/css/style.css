@@ -39,7 +39,7 @@
     border-radius: 8px;
     padding: 20px;
     background: #fff;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .lhb-room-card h3 {
@@ -60,7 +60,8 @@
     margin-top: 20px;
 }
 
-.lhb-submit-btn, .lhb-search-form button {
+.lhb-submit-btn,
+.lhb-search-form button {
     background: #0073aa;
     color: #fff;
     border: none;
@@ -71,7 +72,8 @@
     transition: background 0.3s;
 }
 
-.lhb-submit-btn:hover, .lhb-search-form button:hover {
+.lhb-submit-btn:hover,
+.lhb-search-form button:hover {
     background: #005177;
 }
 
@@ -92,4 +94,31 @@
     background: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
+}
+
+/* Room Types Specific Styles */
+.lhb-room-types-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+}
+
+.lhb-room-type-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.lhb-room-type-image {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    border-radius: 8px 8px 0 0;
+    margin: -20px -20px 20px -20px;
+    width: calc(100% + 40px);
+}
+
+@media (max-width: 768px) {
+    .lhb-room-types-container {
+        grid-template-columns: 1fr;
+    }
 }
