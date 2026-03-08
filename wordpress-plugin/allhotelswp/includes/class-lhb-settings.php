@@ -30,6 +30,7 @@ class LHB_Settings {
 	public function register_settings() {
 		register_setting( 'lhb_options', 'lhb_api_url' );
 		register_setting( 'lhb_options', 'lhb_hotel_slug' );
+		register_setting( 'lhb_options', 'lhb_rooms_page_url' );
 
 		add_settings_section(
 			'lhb_section_api',
@@ -53,6 +54,14 @@ class LHB_Settings {
 			'allhotelswp',
 			'lhb_section_api'
 		);
+
+		add_settings_field(
+			'lhb_rooms_page_url',
+			'Rooms Page URL (Optional)',
+			array( $this, 'field_rooms_page_url_callback' ),
+			'allhotelswp',
+			'lhb_section_api'
+		);
 	}
 
 	public function section_api_callback() {
@@ -67,5 +76,11 @@ class LHB_Settings {
 	public function field_hotel_slug_callback() {
 		$val = get_option( 'lhb_hotel_slug', '' );
 		echo '<input type="text" name="lhb_hotel_slug" value="' . esc_attr( $val ) . '" class="regular-text" placeholder="ocean-view-resort" />';
+	}
+
+	public function field_rooms_page_url_callback() {
+		$val = get_option( 'lhb_rooms_page_url', '' );
+		echo '<input type="url" name="lhb_rooms_page_url" value="' . esc_attr( $val ) . '" class="regular-text" placeholder="https://yourwebsite.com/rooms" />';
+		echo '<p class="description">Optional: If your [laravel_hotel_rooms] shortcode is on a different page, enter its URL here.</p>';
 	}
 }

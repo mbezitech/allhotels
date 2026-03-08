@@ -40,6 +40,9 @@ class LHB_Shortcodes {
 		// Render form to filter by dates
 		?>
 		<form method="get" class="lhb-search-form" id="lhb-rooms-search">
+			<?php if ( ! empty( $room_type_id ) ) : ?>
+				<input type="hidden" name="room_type_id" value="<?php echo esc_attr( $room_type_id ); ?>" />
+			<?php endif; ?>
 			<div class="lhb-form-group">
 				<label>Check In</label>
 				<input type="date" name="check_in" value="<?php echo esc_attr($check_in); ?>" required />

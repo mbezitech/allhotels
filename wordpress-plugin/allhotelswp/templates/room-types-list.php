@@ -24,8 +24,14 @@ $featured_image = !empty($images) ? $api_url . $images[0] : '';
 		<p><strong>Capacity:</strong> <?php echo esc_html( $room_type['capacity'] ?? 'N/A' ); ?> Persons</p>
 	</div>
 
-	<!-- Action linking to the booking page (can be customized by user) -->
 	<div style="margin-top:auto; padding-top:15px;">
-		<a href="<?php echo esc_url( add_query_arg( 'room_type_id', $room_type['id'] ) ); ?>#lhb-rooms-search" class="lhb-submit-btn" style="text-decoration:none; display:inline-block;">Check Availability</a>
+		<?php 
+		$rooms_url = get_option( 'lhb_rooms_page_url', '' );
+		if ( empty( $rooms_url ) ) {
+			$rooms_url = get_permalink();
+		}
+		$search_url = add_query_arg( 'room_type_id', $room_type['id'], $rooms_url );
+		?>
+		<a href="<?php echo esc_url( $search_url ); ?>#lhb-rooms-search" class="lhb-submit-btn" style="text-decoration:none; display:inline-block;">Check Availability</a>
 	</div>
 </div>
