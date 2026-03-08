@@ -140,30 +140,40 @@
 }
 
 .lhb-room-type-image {
+    display: block;
     width: 100%;
-    height: 240px;
+    height: 250px;
+    /* Fixed height for consistency */
     object-fit: cover;
-    border-radius: 0;
     margin: -24px -24px 20px -24px;
     width: calc(100% + 48px);
+    transition: transform 0.5s ease;
+}
+
+.lhb-room-card:hover .lhb-room-type-image {
+    transform: scale(1.05);
 }
 
 /* Responsive & Layout specifics */
 .lhb-layout-list .lhb-room-type-card {
     flex-direction: row;
-    align-items: center;
-    min-height: 200px;
+    align-items: stretch;
+    min-height: 250px;
+    padding-left: 0;
 }
 
 .lhb-layout-list .lhb-room-type-card .lhb-room-type-image {
-    width: 300px;
+    width: 350px;
     height: 100%;
-    margin: -24px 24px -24px -24px;
-    min-height: 200px;
+    margin: 0 24px 0 0;
+    min-height: 250px;
 }
 
 .lhb-layout-list .lhb-room-type-card .lhb-room-details-content {
     flex: 1;
+    padding: 24px 24px 24px 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .lhb-room-type-description {
