@@ -48,6 +48,13 @@
     }
     .badge-active { background: #d4edda; color: #155724; }
     .badge-inactive { background: #e2e3e5; color: #383d41; }
+    .room-type-thumb {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+    }
 </style>
 @endpush
 
@@ -89,6 +96,7 @@
                 @if(isset($isSuperAdmin) && $isSuperAdmin)
                 <th>Hotel</th>
                 @endif
+                <th>Image</th>
                 <th>Name</th>
                 <th>Description</th>
                 <th>Base Price</th>
@@ -108,6 +116,13 @@
                         @endif
                     </td>
                     @endif
+                    <td>
+                        @if($roomType->featured_image)
+                            <img src="{{ url($roomType->featured_image) }}" class="room-type-thumb" alt="{{ $roomType->name }}">
+                        @else
+                            <div class="room-type-thumb" style="display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #ccc; font-size: 10px;">No Image</div>
+                        @endif
+                    </td>
                     <td><strong>{{ $roomType->name }}</strong></td>
                     <td>{{ \Illuminate\Support\Str::limit($roomType->description ?? '', 50) ?: '-' }}</td>
                     <td>${{ number_format($roomType->base_price, 2) }}</td>
