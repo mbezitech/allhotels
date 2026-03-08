@@ -17,6 +17,7 @@ class RoomType extends Model
         'default_capacity',
         'amenities',
         'is_active',
+        'featured_image',
     ];
 
     protected $casts = [

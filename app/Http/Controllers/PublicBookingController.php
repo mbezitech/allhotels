@@ -174,13 +174,17 @@ class PublicBookingController extends Controller
             
             $roomTypes = \App\Models\RoomType::where('hotel_id', $hotel->id)->get();
             
-            // Attach images from the first room of each type
+            // Attach images: prioritize RoomType's featured_image, then fallback to first room's images
             $roomTypes->transform(function ($type) {
-                $firstRoom = \App\Models\Room::where('room_type_id', $type->id)
-                    ->whereNotNull('images')
-                    ->where('images', '!=', '[]')
-                    ->first();
-                $type->images = $firstRoom ? $firstRoom->images : [];
+                if ($type->featured_image) {
+                    $type->images = [$type->featured_image];
+                } else {
+                    $firstRoom = \App\Models\Room::where('room_type_id', $type->id)
+                        ->whereNotNull('images')
+                        ->where('images', '!=', '[]')
+                        ->first();
+                    $type->images = $firstRoom ? $firstRoom->images : [];
+                }
                 return $type;
             });
             
