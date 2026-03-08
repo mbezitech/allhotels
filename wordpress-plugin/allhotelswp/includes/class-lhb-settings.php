@@ -4,8 +4,8 @@ class LHB_Settings {
 
 	public function add_plugin_admin_menu() {
 		add_options_page(
-			'Laravel Booking Settings', 
-			'Laravel Booking', 
+			'allhotelswp Settings', 
+			'allhotelswp', 
 			'manage_options', 
 			'laravel-hotel-booking', 
 			array( $this, 'display_plugin_setup_page' )
@@ -15,7 +15,7 @@ class LHB_Settings {
 	public function display_plugin_setup_page() {
 		?>
 		<div class="wrap">
-			<h2>Laravel Hotel Booking Integration</h2>
+			<h2>allhotelswp Integration</h2>
 			<form action="options.php" method="post">
 				<?php 
 				settings_fields( 'lhb_options' );
