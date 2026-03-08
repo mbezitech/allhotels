@@ -62,9 +62,23 @@
 
 @section('content')
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <form method="POST" action="{{ route('room-types.update', $roomType) }}">
+    <form method="POST" action="{{ route('room-types.update', $roomType) }}" enctype="multipart/form-data">
         @csrf
         @method('PUT')
+
+        <div class="form-group">
+            <label for="featured_image">Featured Image</label>
+            @if($roomType->featured_image)
+                <div style="margin-bottom: 10px;">
+                    <img src="{{ $roomType->featured_image }}" alt="Preview" style="max-width: 200px; border-radius: 8px;">
+                </div>
+            @endif
+            <input type="file" id="featured_image" name="featured_image" accept="image/*">
+            <small style="color: #666;">Modern Grid and List views on WordPress will use this image.</small>
+            @error('featured_image')
+                <span class="error">{{ $message }}</span>
+            @enderror
+        </div>
 
         <div class="form-group">
             <label for="name">Room Type Name *</label>

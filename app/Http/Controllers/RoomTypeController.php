@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\RoomType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class RoomTypeController extends Controller
 {
@@ -65,6 +66,7 @@ class RoomTypeController extends Controller
             'default_capacity' => 'required|integer|min:1',
             'amenities' => 'nullable|array',
             'is_active' => 'boolean',
+            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $hotelId = session('hotel_id');
@@ -91,6 +93,11 @@ class RoomTypeController extends Controller
 
         if ($exists) {
             return back()->withErrors(['name' => 'Room type name already exists for this hotel.'])->withInput();
+        }
+
+        if ($request->hasFile('featured_image')) {
+            $path = $request->file('featured_image')->store('room_types', 'public');
+            $validated['featured_image'] = '/storage/' . $path;
         }
 
         $roomType = RoomType::create($validated);
@@ -134,6 +141,7 @@ class RoomTypeController extends Controller
             'default_capacity' => 'required|integer|min:1',
             'amenities' => 'nullable|array',
             'is_active' => 'boolean',
+            'featured_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         // Check if name already exists for this hotel (excluding current)
@@ -147,6 +155,17 @@ class RoomTypeController extends Controller
         }
 
         $validated['is_active'] = $request->has('is_active');
+        if ($request->hasFile('featured_image')) {
+            // Delete old image if exists
+            if ($roomType->featured_image) {
+                $oldPath = str_replace('/storage/', '', $roomType->featured_image);
+                Storage::disk('public')->delete($oldPath);
+            }
+            
+            $path = $request->file('featured_image')->store('room_types', 'public');
+            $validated['featured_image'] = '/storage/' . $path;
+        }
+
         $roomType->update($validated);
 
         logActivity('updated', $roomType, "Updated room type: {$roomType->name}");
@@ -169,6 +188,13 @@ class RoomTypeController extends Controller
         }
 
         $roomTypeName = $roomType->name;
+        
+        // Delete image if exists
+        if ($roomType->featured_image) {
+            $oldPath = str_replace('/storage/', '', $roomType->featured_image);
+            Storage::disk('public')->delete($oldPath);
+        }
+
         $roomType->delete();
 
         logActivity('deleted', null, "Deleted room type: {$roomTypeName}", ['room_type_id' => $roomType->id]);

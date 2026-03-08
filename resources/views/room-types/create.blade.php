@@ -62,8 +62,17 @@
 
 @section('content')
 <div style="background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <form method="POST" action="{{ route('room-types.store') }}">
+    <form method="POST" action="{{ route('room-types.store') }}" enctype="multipart/form-data">
         @csrf
+
+        <div class="form-group">
+            <label for="featured_image">Featured Image</label>
+            <input type="file" id="featured_image" name="featured_image" accept="image/*">
+            <small style="color: #666;">This image will be shown on the WordPress plugin's modern layouts.</small>
+            @error('featured_image')
+                <span class="error">{{ $message }}</span>
+            @enderror
+        </div>
 
         <div class="form-group">
             <label for="name">Room Type Name *</label>
