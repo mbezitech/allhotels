@@ -71,6 +71,15 @@ class RoomTypeController extends Controller
 
         $hotelId = session('hotel_id');
 
+        // Check if name already exists for this hotel
+        $exists = RoomType::where('hotel_id', $hotelId)
+            ->where('name', $validated['name'])
+            ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['name' => 'Room type name already exists for this hotel.'])->withInput();
+        }
+
         // Generate slug from name
         $slug = Str::slug($validated['name']);
         
@@ -82,20 +91,15 @@ class RoomTypeController extends Controller
             $counter++;
         }
 
-        if ($exists) {
-            return back()->withErrors(['name' => 'Room type name already exists for this hotel.'])->withInput();
-        }
-
         $validated['hotel_id'] = $hotelId;
         $validated['slug'] = $slug;
         $validated['is_active'] = $request->has('is_active');
 
-        // Remove featured_image from validated data to handle it separately
-        unset($validated['featured_image']);
-
         if ($request->hasFile('featured_image')) {
             $path = $request->file('featured_image')->store('room_types', 'public');
             $validated['featured_image'] = '/storage/' . $path;
+        } else {
+            unset($validated['featured_image']);
         }
 
         $roomType = RoomType::create($validated);
@@ -154,10 +158,6 @@ class RoomTypeController extends Controller
 
         $validated['is_active'] = $request->has('is_active');
         
-        // Remove featured_image from validated data if no new file is uploaded
-        // to avoid overwriting existing image with null
-        unset($validated['featured_image']);
-
         if ($request->hasFile('featured_image')) {
             // Delete old image if exists
             if ($roomType->featured_image) {
@@ -166,11 +166,13 @@ class RoomTypeController extends Controller
             }
             
             $path = $request->file('featured_image')->store('room_types', 'public');
-            $roomType->featured_image = '/storage/' . $path;
+            $validated['featured_image'] = '/storage/' . $path;
+        } else {
+            // Don't overwrite existing image with null
+            unset($validated['featured_image']);
         }
 
         $roomType->update($validated);
-        $roomType->save();
 
         logActivity('updated', $roomType, "Updated room type: {$roomType->name}");
 
