@@ -11,6 +11,8 @@
 :root {
     --lhb-primary-color: #3182ce;
     --lhb-primary-hover: #2b6cb0;
+    --lhb-rt-img-width: 500px;
+    --lhb-rt-img-height: 360px;
 }
 
 .lhb-form-group {
@@ -146,9 +148,11 @@
 
 .lhb-room-type-image {
     display: block;
-    width: 100%;
-    height: 360px;
-    /* Standardized to 500x360 feel */
+    width: var(--lhb-rt-img-width);
+    /* Dynamic width */
+    height: var(--lhb-rt-img-height);
+    /* Dynamic height */
+    max-width: 100%;
     object-fit: cover;
     margin: -24px -24px 20px -24px;
     width: calc(100% + 48px);
@@ -160,21 +164,36 @@
 }
 
 /* Responsive & Layout specifics */
-.lhb-layout-list .lhb-room-type-card {
+.lhb-layout-list .lhb-room-card {
     flex-direction: row;
     align-items: stretch;
     min-height: 250px;
+}
+
+.lhb-layout-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+}
+
+.lhb-layout-list {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.lhb-layout-list .lhb-room-type-card {
     padding-left: 0;
 }
 
-.lhb-layout-list .lhb-room-type-card .lhb-room-type-image {
+.lhb-layout-list .lhb-room-type-image {
     width: 350px;
     height: 100%;
     margin: 0 24px 0 0;
     min-height: 250px;
 }
 
-.lhb-layout-list .lhb-room-type-card .lhb-room-details-content {
+.lhb-layout-list .lhb-room-details-content {
     flex: 1;
     padding: 24px 24px 24px 0;
     display: flex;

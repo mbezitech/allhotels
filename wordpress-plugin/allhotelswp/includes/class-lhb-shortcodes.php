@@ -58,7 +58,8 @@ class LHB_Shortcodes {
 		if ( empty( $rooms ) || ! is_array( $rooms ) ) {
 			echo '<p>No rooms available for the selected dates.</p>';
 		} else {
-			echo '<div class="lhb-rooms-container">';
+			$layout = get_option( 'lhb_room_layout', 'grid' );
+			echo '<div class="lhb-rooms-container lhb-layout-' . esc_attr( $layout ) . '">';
 			foreach ( $rooms as $room ) {
 				include LHB_PLUGIN_DIR . 'templates/rooms-list.php';
 			}

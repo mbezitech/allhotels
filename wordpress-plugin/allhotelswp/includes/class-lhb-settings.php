@@ -33,6 +33,9 @@ class LHB_Settings {
 		register_setting( 'lhb_options', 'lhb_rooms_page_url' );
 		register_setting( 'lhb_options', 'lhb_room_type_layout' );
 		register_setting( 'lhb_options', 'lhb_theme_color' );
+		register_setting( 'lhb_options', 'lhb_room_type_image_width' );
+		register_setting( 'lhb_options', 'lhb_room_type_image_height' );
+		register_setting( 'lhb_options', 'lhb_room_layout' );
 
 		add_settings_section(
 			'lhb_section_api',
@@ -60,6 +63,22 @@ class LHB_Settings {
 			'lhb_room_type_layout',
 			'Room Type Display Layout',
 			array( $this, 'field_room_type_layout_callback' ),
+			'allhotelswp',
+			'lhb_section_design'
+		);
+
+		add_settings_field(
+			'lhb_room_layout',
+			'Room List Display Layout',
+			array( $this, 'field_room_layout_callback' ),
+			'allhotelswp',
+			'lhb_section_design'
+		);
+
+		add_settings_field(
+			'lhb_room_type_image_dimensions',
+			'Room Type Image Dimensions',
+			array( $this, 'field_image_dimensions_callback' ),
 			'allhotelswp',
 			'lhb_section_design'
 		);
@@ -110,6 +129,20 @@ class LHB_Settings {
 		<?php
 	}
 
+	public function field_image_dimensions_callback() {
+		$width = get_option( 'lhb_room_type_image_width', '500' );
+		$height = get_option( 'lhb_room_type_image_height', '360' );
+		?>
+		<div style="display: flex; gap: 10px; align-items: center;">
+			<input type="number" name="lhb_room_type_image_width" value="<?php echo esc_attr( $width ); ?>" style="width: 80px;" /> 
+			<span>x</span>
+			<input type="number" name="lhb_room_type_image_height" value="<?php echo esc_attr( $height ); ?>" style="width: 80px;" />
+			<span>pixels</span>
+		</div>
+		<p class="description">Set the preferred width and height for room type images (Default: 500x360).</p>
+		<?php
+	}
+
 	public function field_api_url_callback() {
 		$val = get_option( 'lhb_api_url', '' );
 		echo '<input type="url" name="lhb_api_url" value="' . esc_attr( $val ) . '" class="regular-text" placeholder="https://yourlaravelapp.com" />';
@@ -134,6 +167,17 @@ class LHB_Settings {
 			<option value="list" <?php selected( $val, 'list' ); ?>>Classic List</option>
 		</select>
 		<p class="description">Select the display style for the [laravel_hotel_room_types] shortcode.</p>
+		<?php
+	}
+
+	public function field_room_layout_callback() {
+		$val = get_option( 'lhb_room_layout', 'grid' );
+		?>
+		<select name="lhb_room_layout">
+			<option value="grid" <?php selected( $val, 'grid' ); ?>>Modern Grid</option>
+			<option value="list" <?php selected( $val, 'list' ); ?>>Classic List</option>
+		</select>
+		<p class="description">Select the display style for the [laravel_hotel_rooms] shortcode.</p>
 		<?php
 	}
 }
