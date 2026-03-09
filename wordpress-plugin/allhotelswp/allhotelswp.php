@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       allhotelswp
  * Description:       A production-ready plugin to connect WordPress with your Laravel booking API. Contact: +255 718 248 257
- * Version:           1.3.1
+ * Version:           1.3.2
  * Author:            Inocent Mhina
  * License:           GPL-2.0+
  * Text Domain:       laravel-hotel-booking
@@ -13,7 +13,7 @@ if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
-define( 'LHB_VERSION', '1.3.1' );
+define( 'LHB_VERSION', '1.3.2' );
 define( 'LHB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LHB_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -65,14 +65,12 @@ class Laravel_Hotel_Booking {
 		
 		// Inject dynamic theme color and dimension CSS
 		$theme_color = get_option( 'lhb_theme_color', '#3182ce' );
-		$img_width = get_option( 'lhb_room_type_image_width', '500' );
 		$img_height = get_option( 'lhb_room_type_image_height', '360' );
 
 		$custom_css = "
 			:root {
 				--lhb-primary-color: {$theme_color};
 				--lhb-primary-hover: " . $this->adjust_brightness($theme_color, -20) . ";
-				--lhb-rt-img-width: {$img_width}px;
 				--lhb-rt-img-height: {$img_height}px;
 			}
 		";

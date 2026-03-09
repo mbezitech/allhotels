@@ -33,7 +33,6 @@ class LHB_Settings {
 		register_setting( 'lhb_options', 'lhb_rooms_page_url' );
 		register_setting( 'lhb_options', 'lhb_room_type_layout' );
 		register_setting( 'lhb_options', 'lhb_theme_color' );
-		register_setting( 'lhb_options', 'lhb_room_type_image_width' );
 		register_setting( 'lhb_options', 'lhb_room_type_image_height' );
 		register_setting( 'lhb_options', 'lhb_room_layout' );
 
@@ -76,9 +75,9 @@ class LHB_Settings {
 		);
 
 		add_settings_field(
-			'lhb_room_type_image_dimensions',
-			'Room Type Image Dimensions',
-			array( $this, 'field_image_dimensions_callback' ),
+			'lhb_room_type_image_height',
+			'Room Type Image Height',
+			array( $this, 'field_image_height_callback' ),
 			'allhotelswp',
 			'lhb_section_design'
 		);
@@ -129,17 +128,14 @@ class LHB_Settings {
 		<?php
 	}
 
-	public function field_image_dimensions_callback() {
-		$width = get_option( 'lhb_room_type_image_width', '500' );
+	public function field_image_height_callback() {
 		$height = get_option( 'lhb_room_type_image_height', '360' );
 		?>
 		<div style="display: flex; gap: 10px; align-items: center;">
-			<input type="number" name="lhb_room_type_image_width" value="<?php echo esc_attr( $width ); ?>" style="width: 80px;" /> 
-			<span>x</span>
 			<input type="number" name="lhb_room_type_image_height" value="<?php echo esc_attr( $height ); ?>" style="width: 80px;" />
 			<span>pixels</span>
 		</div>
-		<p class="description">Set the preferred width and height for room type images (Default: 500x360).</p>
+		<p class="description">Set the preferred height for room type images. Width will adjust automatically to fill the card.</p>
 		<?php
 	}
 
