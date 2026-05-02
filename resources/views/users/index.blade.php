@@ -176,7 +176,7 @@
                             @endif
                             @if($showDeleted ?? false)
                                 {{-- Show restore and force delete for deleted users --}}
-                                @if($user->id !== auth()->id() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.manage')))
+                                @if($user->id !== auth()->id() && (auth()->check() && auth()->user()->isSuperAdmin() || auth()->check() && auth()->user()->hasPermission('users.manage')))
                                     <form action="{{ route('users.restore', $user->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this user?')">
                                         @csrf
                                         <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
@@ -189,7 +189,7 @@
                                 @endif
                             @else
                                 {{-- Show regular delete for active users --}}
-                                @if($user->id !== auth()->id() && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.manage')))
+                                @if($user->id !== auth()->id() && (auth()->check() && auth()->user()->isSuperAdmin() || auth()->check() && auth()->user()->hasPermission('users.manage')))
                                     <form action="{{ route('users.destroy', $user) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this user?')">
                                         @csrf
                                         @method('DELETE')

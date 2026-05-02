@@ -190,7 +190,7 @@
 <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
     <div class="calendar-actions">
         <a href="{{ route('bookings.index') }}" class="btn" style="background: #95a5a6;">List View</a>
-        @if(auth()->user()->hasPermission('bookings.create') || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('bookings.create') || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('bookings.create') }}" class="btn">New Booking</a>
         @endif
     </div>

@@ -300,7 +300,7 @@
         @if(
             $booking->status !== 'cancelled' &&
             $booking->outstanding_balance > 0 &&
-            (auth()->user()->hasPermission('payments.create') || auth()->user()->isSuperAdmin())
+            (auth()->check() && auth()->user() && auth()->user()->hasPermission('payments.create') || auth()->check() && auth()->user()->isSuperAdmin())
         )
             <a href="{{ route('payments.create', ['booking_id' => $booking->id]) }}" class="btn btn-primary">Add Payment</a>
         @endif

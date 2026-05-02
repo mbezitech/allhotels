@@ -94,7 +94,7 @@
         @if(isset($hotel) && $hotel)
             <a href="{{ route('public.search', $hotel->slug) }}" target="_blank" class="btn" style="background: #28a745;">View Public Search</a>
         @endif
-        @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user()->hasPermission('rooms.manage') || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('rooms.create') }}" class="btn btn-primary">Add Room</a>
         @endif
     </div>
@@ -191,12 +191,12 @@
                         @endif
                     </td>
                     <td>
-                        @if(auth()->user()->hasPermission('rooms.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('rooms.edit', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                             <a href="{{ route('rooms.edit', $room) }}" class="btn btn-edit">Edit</a>
                         @endif
                         @if($showDeleted ?? false)
                             {{-- Show restore and force delete for deleted rooms --}}
-                            @if(auth()->user()->hasPermission('rooms.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                            @if(auth()->check() && auth()->user()->hasPermission('rooms.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                 <form action="{{ route('rooms.restore', $room->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this room?')">
                                     @csrf
                                     <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
@@ -209,7 +209,7 @@
                             @endif
                         @else
                             {{-- Show regular delete for active rooms --}}
-                            @if(auth()->user()->hasPermission('rooms.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                            @if(auth()->check() && auth()->user()->hasPermission('rooms.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                 <form action="{{ route('rooms.destroy', $room) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this room? This action cannot be undone.')">
                                     @csrf
                                     @method('DELETE')

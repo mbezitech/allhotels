@@ -134,7 +134,7 @@
         </div>
         @endif
 
-        @if(auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user()->isSuperAdmin())
         <div class="form-group">
             <div class="checkbox-group">
                 <input type="hidden" name="is_super_admin" value="0">

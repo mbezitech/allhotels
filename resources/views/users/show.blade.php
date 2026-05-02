@@ -135,7 +135,7 @@
         <div class="info-value">
             @if($user->is_super_admin)
                 <span class="badge badge-super-admin">Super Admin</span>
-                @if(auth()->user()->isSuperAdmin() && $user->id !== auth()->id())
+                @if(auth()->check() && auth()->user()->isSuperAdmin() && $user->id !== auth()->id())
                     <div class="action-buttons">
                         <form method="POST" action="{{ route('users.toggle-super-admin', $user) }}" style="display: inline;">
                             @csrf
@@ -146,7 +146,7 @@
                 @endif
             @elseif($user->ownedHotels->count() > 0)
                 <span class="badge badge-owner">Owner</span>
-                @if(auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->isSuperAdmin())
                     <div class="action-buttons">
                         <form method="POST" action="{{ route('users.toggle-super-admin', $user) }}" style="display: inline;">
                             @csrf
@@ -157,7 +157,7 @@
                 @endif
             @else
                 <span style="color: #666;">Regular User</span>
-                @if(auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->isSuperAdmin())
                     <div class="action-buttons">
                         <form method="POST" action="{{ route('users.toggle-super-admin', $user) }}" style="display: inline;">
                             @csrf

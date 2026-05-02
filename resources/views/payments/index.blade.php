@@ -61,7 +61,7 @@
                 View Active Payments
             </a>
         @endif
-        @if(auth()->user()->hasPermission('payments.create') || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('payments.create') || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('payments.create') }}" class="btn btn-primary">Record Payment</a>
         @endif
     </div>
@@ -215,7 +215,7 @@
                             <a href="{{ route('payments.show', $payment) }}" class="btn" style="background: #3498db; color: white; padding: 6px 12px; font-size: 12px;">View</a>
                             @if($showDeleted ?? false)
                                 {{-- Show restore and force delete for deleted payments --}}
-                                @if(auth()->user()->hasPermission('payments.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('payments.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                     <form action="{{ route('payments.restore', $payment->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this payment?')">
                                         @csrf
                                         <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
@@ -228,7 +228,7 @@
                                 @endif
                             @else
                                 {{-- Show regular delete for active payments --}}
-                                @if(auth()->user()->hasPermission('payments.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('payments.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                     <form action="{{ route('payments.destroy', $payment) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this payment?')">
                                         @csrf
                                         @method('DELETE')

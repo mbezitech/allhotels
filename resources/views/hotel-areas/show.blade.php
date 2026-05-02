@@ -19,7 +19,7 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">Area Details</h2>
     <div style="display: flex; gap: 10px;">
-        @if(auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('housekeeping.manage') || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('hotel-areas.edit', $hotelArea) }}" class="btn" style="background: #3498db; color: white;">Edit</a>
         @endif
         <a href="{{ route('hotel-areas.index') }}" class="btn" style="background: #95a5a6; color: white;">Back to Areas</a>

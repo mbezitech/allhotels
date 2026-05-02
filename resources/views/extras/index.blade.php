@@ -89,7 +89,7 @@
                 View Active Products
             </a>
         @endif
-        @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user()->hasPermission('stock.manage') || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('extras.create') }}" class="btn btn-primary">Add Product</a>
         @endif
     </div>
@@ -212,7 +212,7 @@
                             </td>
                             <td>
                                 <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                    @if($extra->stock_tracked && (auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin()))
+                                    @if($extra->stock_tracked && (auth()->check() && auth()->user()->hasPermission('stock.manage') || auth()->check() && auth()->user()->isSuperAdmin()))
                                         <button onclick="showAddStockModal({{ $extra->id }}, {{ json_encode($extra->name) }}, {{ $extra->current_stock ?? $extra->getStockBalance() }}, {{ json_encode($extra->unit ?? 'piece') }})" 
                                                 class="btn" 
                                                 style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">
@@ -220,7 +220,7 @@
                                         </button>
                                     @endif
                                     <a href="{{ route('extras.edit', $extra) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
-                                    @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+                                    @if(auth()->check() && auth()->user()->hasPermission('stock.manage') || auth()->check() && auth()->user()->isSuperAdmin())
                                         <form action="{{ route('extras.destroy', $extra) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
                                             @csrf
                                             @method('DELETE')

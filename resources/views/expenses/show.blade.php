@@ -8,10 +8,10 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="color: #333; font-size: 24px;">Expense Details</h2>
         <div style="display: flex; gap: 10px;">
-            @if(auth()->user()->hasPermission('expenses.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
+            @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expenses.edit', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                 <a href="{{ route('expenses.edit', $expense) }}" class="btn" style="background: #3498db; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none;">Edit</a>
             @endif
-            @if(auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+            @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                 <form action="{{ route('expenses.destroy', $expense) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this expense?')">
                     @csrf
                     @method('DELETE')

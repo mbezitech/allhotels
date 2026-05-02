@@ -67,7 +67,7 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">Expense Categories</h2>
-    @if(auth()->user()->hasPermission('expense_categories.manage', session('hotel_id')) || auth()->user()->isSuperAdmin())
+    @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expense_categories.manage', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
         <a href="{{ route('expense-categories.create') }}" class="btn btn-primary">Add Category</a>
     @endif
 </div>
@@ -144,10 +144,10 @@
                         </td>
                         <td>
                             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                @if(auth()->user()->hasPermission('expense_categories.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expense_categories.edit', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                     <a href="{{ route('expense-categories.edit', $category) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
                                 @endif
-                                @if(auth()->user()->hasPermission('expense_categories.manage', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expense_categories.manage', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                     @if($category->expenses_count == 0)
                                         <form action="{{ route('expense-categories.destroy', $category) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this category?')">
                                             @csrf

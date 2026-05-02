@@ -90,10 +90,10 @@
                 View Active Expenses
             </a>
         @endif
-        @if(auth()->user()->hasPermission('expenses.create', session('hotel_id')) || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expenses.create', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('expenses.create') }}" class="btn btn-primary">Add Expense</a>
         @endif
-        @if(auth()->user()->hasPermission('expense_reports.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expense_reports.view', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('expense-reports.index') }}" class="btn" style="background: #28a745; color: white;">View Reports</a>
         @endif
     </div>
@@ -261,12 +261,12 @@
                         <td>
                             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                                 <a href="{{ route('expenses.show', $expense) }}" class="btn" style="background: #3498db; color: white; padding: 6px 12px; font-size: 12px;">View</a>
-                                @if(auth()->user()->hasPermission('expenses.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expenses.edit', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                     <a href="{{ route('expenses.edit', $expense) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
                                 @endif
                                 @if($showDeleted ?? false)
                                     {{-- Show restore and force delete for deleted expenses --}}
-                                    @if(auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                    @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                         <form action="{{ route('expenses.restore', $expense->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this expense?')">
                                             @csrf
                                             <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
@@ -279,7 +279,7 @@
                                     @endif
                                 @else
                                     {{-- Show regular delete for active expenses --}}
-                                    @if(auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                    @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('expenses.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                         <form action="{{ route('expenses.destroy', $expense) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this expense?')">
                                             @csrf
                                             @method('DELETE')

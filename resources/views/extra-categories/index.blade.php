@@ -67,7 +67,7 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">All Extra Categories</h2>
-    @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+    @if(auth()->check() && auth()->user()->hasPermission('stock.manage') || auth()->check() && auth()->user()->isSuperAdmin())
         <a href="{{ route('extra-categories.create') }}" class="btn btn-primary">Create Category</a>
     @endif
 </div>

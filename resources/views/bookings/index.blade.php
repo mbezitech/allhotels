@@ -74,7 +74,7 @@
             </a>
         @endif
         <a href="{{ route('bookings.calendar') }}" class="btn" style="background: #95a5a6; color: white; margin-right: 10px;">Calendar View</a>
-        @if(auth()->user()->hasPermission('bookings.create') || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('bookings.create') || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('bookings.create') }}" class="btn btn-primary">New Booking</a>
         @endif
     </div>
@@ -398,7 +398,7 @@
                         <div style="display: flex; gap: 5px; flex-wrap: wrap;">
                             <a href="{{ route('bookings.show', $booking) }}" class="btn" style="background: #3498db; color: white; padding: 6px 12px; font-size: 12px;">View</a>
                             
-                            @if(auth()->user()->hasPermission('bookings.edit', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                            @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('bookings.edit', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                 @php
                                     $today = \Carbon\Carbon::today();
                                     $checkInDate = \Carbon\Carbon::parse($booking->check_in);
@@ -427,7 +427,7 @@
                             
                             @if($showDeleted ?? false)
                                 {{-- Show restore and force delete for deleted bookings --}}
-                                @if(auth()->user()->hasPermission('bookings.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('bookings.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                     <form action="{{ route('bookings.restore', $booking->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Restore this booking?')">
                                         @csrf
                                         <button type="submit" class="btn" style="background: #28a745; color: white; padding: 6px 12px; font-size: 12px;">Restore</button>
@@ -440,7 +440,7 @@
                                 @endif
                             @else
                                 {{-- Show regular delete for active bookings --}}
-                                @if(auth()->user()->hasPermission('bookings.delete', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                                @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('bookings.delete', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                     <form action="{{ route('bookings.destroy', $booking) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
                                         @csrf
                                         @method('DELETE')

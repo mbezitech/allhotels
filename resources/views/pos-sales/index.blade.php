@@ -56,7 +56,7 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">All POS Sales</h2>
-    @if(auth()->user()->hasPermission('pos.sell') || auth()->user()->isSuperAdmin())
+    @if(auth()->check() && auth()->user()->hasPermission('pos.sell') || auth()->check() && auth()->user()->isSuperAdmin())
         <a href="{{ route('pos-sales.create') }}" class="btn btn-primary">New Sale</a>
     @endif
 </div>

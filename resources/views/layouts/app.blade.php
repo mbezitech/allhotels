@@ -214,7 +214,7 @@
                 @if($currentHotel)
                     <span class="hotel-badge">{{ $currentHotel->name }}</span>
                 @endif
-            @elseif(auth()->check() && auth()->user()->isSuperAdmin())
+            @elseif(auth()->check() && auth()->check() && auth()->user()->isSuperAdmin())
                 <span class="hotel-badge" style="background: rgba(255, 193, 7, 0.3);">Super Admin Mode</span>
             @endif
         </div>
@@ -226,7 +226,7 @@
                     </a>
                 </li>
                 
-                @if(auth()->user()->hasPermission('rooms.view') || auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->hasPermission('rooms.view') || auth()->check() && auth()->user()->isSuperAdmin())
                     <li class="nav-section" onclick="toggleSection(this)">
                         <span>Rooms & Bookings</span>
                         <span class="nav-section-toggle">▼</span>
@@ -238,7 +238,7 @@
                                 Rooms
                             </a>
                         </li>
-                        @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('rooms.manage') || auth()->check() && auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('room-types.index') }}" class="nav-link {{ request()->routeIs('room-types.*') ? 'active' : '' }}">
                                     Room Types
@@ -253,7 +253,7 @@
                     </div>
                 @endif
 
-                @if(auth()->user()->hasPermission('housekeeping.view') || auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->hasPermission('housekeeping.view') || auth()->check() && auth()->user()->isSuperAdmin())
                     <li class="nav-section" onclick="toggleSection(this)">
                         <span>Housekeeping</span>
                         <span class="nav-section-toggle">▼</span>
@@ -274,7 +274,7 @@
                                 Reports
                             </a>
                         </li>
-                        @if(auth()->user()->hasPermission('housekeeping_reports.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('housekeeping_reports.view', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                         <li class="nav-item">
                             <a href="{{ route('housekeeping-reports.issues') }}" class="nav-link {{ request()->routeIs('housekeeping-reports.issues') ? 'active' : '' }}">
                                 Issues & Resolutions
@@ -289,7 +289,7 @@
                     </div>
                 @endif
 
-                @if(auth()->user()->hasPermission('pos.view') || auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->hasPermission('pos.view') || auth()->check() && auth()->user()->isSuperAdmin())
                     <li class="nav-section" onclick="toggleSection(this)">
                         <span>Products & POS</span>
                         <span class="nav-section-toggle">▼</span>
@@ -300,7 +300,7 @@
                                 Products
                             </a>
                         </li>
-                        @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('stock.manage') || auth()->check() && auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('extra-categories.index') }}" class="nav-link {{ request()->routeIs('extra-categories.*') ? 'active' : '' }}">
                                     Product Categories
@@ -320,34 +320,34 @@
                     </div>
                 @endif
 
-                @if(auth()->user()->hasPermission('payments.view') || auth()->user()->hasPermission('expenses.view') || auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->hasPermission('payments.view') || auth()->check() && auth()->user()->hasPermission('expenses.view') || auth()->check() && auth()->user()->isSuperAdmin())
                     <li class="nav-section" onclick="toggleSection(this)">
                         <span>Financial</span>
                         <span class="nav-section-toggle">▼</span>
                     </li>
                     <div class="nav-section-items">
-                        @if(auth()->user()->hasPermission('payments.view') || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('payments.view') || auth()->check() && auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('payments.index') }}" class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}">
                                     Payments
                                 </a>
                             </li>
                         @endif
-                        @if(auth()->user()->hasPermission('expenses.view') || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('expenses.view') || auth()->check() && auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('expenses.index') }}" class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}">
                                     Expenses
                                 </a>
                             </li>
                         @endif
-                        @if(auth()->user()->hasPermission('expense_categories.view') || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('expense_categories.view') || auth()->check() && auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('expense-categories.index') }}" class="nav-link {{ request()->routeIs('expense-categories.*') ? 'active' : '' }}">
                                     Expense Categories
                                 </a>
                             </li>
                         @endif
-                        @if(auth()->user()->hasPermission('expense_reports.view') || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('expense_reports.view') || auth()->check() && auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('expense-reports.index') }}" class="nav-link {{ request()->routeIs('expense-reports.*') ? 'active' : '' }}">
                                     Expense Reports
@@ -357,7 +357,7 @@
                     </div>
                 @endif
 
-                @if(auth()->user()->hasPermission('reports.view') || auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->hasPermission('reports.view') || auth()->check() && auth()->user()->isSuperAdmin())
                     <li class="nav-section" onclick="toggleSection(this)">
                         <span>Reports</span>
                         <span class="nav-section-toggle">▼</span>
@@ -371,20 +371,20 @@
                     </div>
                 @endif
 
-                @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('users.manage'))
+                @if(auth()->check() && auth()->user()->isSuperAdmin() || auth()->check() && auth()->user()->hasPermission('users.view') || auth()->check() && auth()->user()->hasPermission('users.manage'))
                     <li class="nav-section" onclick="toggleSection(this)">
                         <span>Administration</span>
                         <span class="nav-section-toggle">▼</span>
                     </li>
                     <div class="nav-section-items">
-                        @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('users.view') || auth()->user()->hasPermission('users.manage'))
+                        @if(auth()->check() && auth()->user()->isSuperAdmin() || auth()->check() && auth()->user()->hasPermission('users.view') || auth()->check() && auth()->user()->hasPermission('users.manage'))
                         <li class="nav-item">
                             <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
                                 Users
                             </a>
                         </li>
                         @endif
-                        @if(auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->isSuperAdmin())
                         <li class="nav-item">
                             <a href="{{ route('hotels.index') }}" class="nav-link {{ request()->routeIs('hotels.*') ? 'active' : '' }}">
                                 Hotels
@@ -394,7 +394,7 @@
                     </div>
                 @endif
 
-                @if(auth()->user()->hasPermission('roles.manage') || auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->hasPermission('roles.manage') || auth()->check() && auth()->user()->isSuperAdmin())
                     <li class="nav-section" onclick="toggleSection(this)">
                         <span>User Management</span>
                         <span class="nav-section-toggle">▼</span>
@@ -413,20 +413,20 @@
                     </div>
                 @endif
 
-                @if(auth()->user()->hasPermission('activity_logs.view') || auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->hasPermission('activity_logs.view') || auth()->check() && auth()->user()->isSuperAdmin())
                     <li class="nav-section" onclick="toggleSection(this)">
                         <span>System</span>
                         <span class="nav-section-toggle">▼</span>
                     </li>
                     <div class="nav-section-items">
-                        @if(auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('settings.index') }}" class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
                                     System Settings
                                 </a>
                             </li>
                         @endif
-                        @if(auth()->user()->hasPermission('email_settings.view', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user()->hasPermission('email_settings.view', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="{{ route('email-settings.index') }}" class="nav-link {{ request()->routeIs('email-settings.*') ? 'active' : '' }}">
                                     Email Settings
@@ -448,7 +448,7 @@
         <div class="top-bar">
             <h2>@yield('page-title', 'Dashboard')</h2>
             <div class="user-menu">
-                @if(auth()->user()->isSuperAdmin())
+                @if(auth()->check() && auth()->user()->isSuperAdmin())
                     @php
                         $allHotels = \App\Models\Hotel::orderBy('name')->get();
                         $currentHotelId = session('hotel_id');
@@ -549,7 +549,7 @@
             });
         });
 
-        @if(auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user()->isSuperAdmin())
         function switchHotel(hotelId) {
             const form = document.createElement('form');
             form.method = 'POST';

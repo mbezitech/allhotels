@@ -22,7 +22,7 @@
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">Housekeeping Record Details</h2>
     <div style="display: flex; gap: 10px;">
-        @if(auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user()->hasPermission('housekeeping.manage') || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('housekeeping-records.edit', $housekeepingRecord) }}" class="btn" style="background: #3498db; color: white;">Edit</a>
         @endif
         <a href="{{ route('housekeeping-records.index') }}" class="btn" style="background: #95a5a6; color: white;">Back to Records</a>
@@ -135,7 +135,7 @@
             @endif
         </div>
         
-        @if(!$housekeepingRecord->issue_resolved && (auth()->user()->hasPermission('housekeeping_records.resolve', session('hotel_id')) || auth()->user()->isSuperAdmin()))
+        @if(!$housekeepingRecord->issue_resolved && (auth()->check() && auth()->user()->hasPermission('housekeeping_records.resolve', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin()))
             <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
                 <button onclick="showResolveModal({{ $housekeepingRecord->id }})" class="btn" style="background: #28a745; color: white;">Resolve Issue</button>
             </div>
@@ -170,7 +170,7 @@
         </div>
     @endif
 
-    @if($housekeepingRecord->cleaning_status == 'clean' && (auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->user()->isSuperAdmin()))
+    @if($housekeepingRecord->cleaning_status == 'clean' && (auth()->check() && auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin()))
         <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee;">
             <form action="{{ route('housekeeping-records.inspect', $housekeepingRecord) }}" method="POST">
                 @csrf

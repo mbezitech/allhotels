@@ -57,7 +57,7 @@
     <h2 style="color: #333; font-size: 24px;">All Stock Movements</h2>
     <div style="display: flex; gap: 10px;">
         <a href="{{ route('stock-movements.balance') }}" class="btn" style="background: #3498db; color: white;">Stock Balance</a>
-        @if(auth()->user()->hasPermission('stock.manage') || auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user()->hasPermission('stock.manage') || auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('stock-movements.create') }}" class="btn btn-primary">Add Movement</a>
         @endif
     </div>

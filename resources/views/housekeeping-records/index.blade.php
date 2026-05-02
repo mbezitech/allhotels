@@ -27,7 +27,7 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">Housekeeping Records</h2>
-    @if(auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin())
+    @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('housekeeping.manage') || auth()->check() && auth()->user()->isSuperAdmin())
         <a href="{{ route('housekeeping-records.create') }}" class="btn btn-primary">Create Record</a>
     @endif
 </div>
@@ -174,7 +174,7 @@
                                 <button type="submit" class="btn btn-success" style="padding: 6px 12px; font-size: 12px;">Complete</button>
                             </form>
                         @endif
-                        @if($record->cleaning_status == 'clean' && (auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->user()->isSuperAdmin()))
+                        @if($record->cleaning_status == 'clean' && (auth()->check() && auth()->user() && auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin()))
                             <form action="{{ route('housekeeping-records.inspect', $record) }}" method="POST" style="display: inline;">
                                 @csrf
                                 <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Inspect</button>

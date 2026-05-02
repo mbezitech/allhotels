@@ -113,7 +113,7 @@
             <input type="password" id="password_confirmation" name="password_confirmation" required minlength="8">
         </div>
 
-        @if(auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user()->isSuperAdmin())
         <div class="form-group">
             <div class="checkbox-group">
                 <input type="hidden" name="is_super_admin" value="0">

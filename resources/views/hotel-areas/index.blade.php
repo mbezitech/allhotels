@@ -21,7 +21,7 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">Hotel Areas</h2>
-    @if(auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin())
+    @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('housekeeping.manage') || auth()->check() && auth()->user()->isSuperAdmin())
         <a href="{{ route('hotel-areas.create') }}" class="btn btn-primary">Create Area</a>
     @endif
 </div>
@@ -89,7 +89,7 @@
                     </td>
                     <td>
                         <a href="{{ route('hotel-areas.show', $area) }}" class="btn" style="background: #3498db; color: white; padding: 6px 12px; font-size: 12px;">View</a>
-                        @if(auth()->user()->hasPermission('housekeeping.manage') || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('housekeeping.manage') || auth()->check() && auth()->user()->isSuperAdmin())
                             <a href="{{ route('hotel-areas.edit', $area) }}" class="btn btn-edit" style="padding: 6px 12px; font-size: 12px;">Edit</a>
                             <form action="{{ route('hotel-areas.destroy', $area) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this area?')">
                                 @csrf

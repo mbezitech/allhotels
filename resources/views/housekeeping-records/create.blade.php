@@ -99,7 +99,7 @@
                     <option value="dirty" {{ old('cleaning_status', 'dirty') == 'dirty' ? 'selected' : '' }}>Dirty</option>
                     <option value="cleaning" {{ old('cleaning_status') == 'cleaning' ? 'selected' : '' }}>Cleaning</option>
                     <option value="clean" {{ old('cleaning_status') == 'clean' ? 'selected' : '' }}>Clean</option>
-                    @if(auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                    @if(auth()->check() && auth()->user()->hasPermission('housekeeping_records.inspect', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                         <option value="inspected" {{ old('cleaning_status') == 'inspected' ? 'selected' : '' }}>Inspected</option>
                     @endif
                 </select>

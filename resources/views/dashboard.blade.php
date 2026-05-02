@@ -4,7 +4,7 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
-@if(!$hotel && auth()->user()->isSuperAdmin())
+@if(!$hotel && auth()->check() && auth()->user()->isSuperAdmin())
     <!-- Super Admin Dashboard -->
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 30px; margin-bottom: 30px; color: white;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -328,27 +328,27 @@
 
 @if($hotel)
 @if($hotel && (
-    (isset($canViewBookings) && $canViewBookings && (auth()->user()->hasPermission('bookings.create', $hotel->id) || auth()->user()->isSuperAdmin())) ||
-    (isset($canViewSales) && $canViewSales && (auth()->user()->hasPermission('pos.sell', $hotel->id) || auth()->user()->isSuperAdmin())) ||
-    (isset($canViewPayments) && $canViewPayments && (auth()->user()->hasPermission('payments.create', $hotel->id) || auth()->user()->isSuperAdmin())) ||
+    (isset($canViewBookings) && $canViewBookings && (auth()->check() && auth()->user()->hasPermission('bookings.create', $hotel->id) || auth()->check() && auth()->user()->isSuperAdmin())) ||
+    (isset($canViewSales) && $canViewSales && (auth()->check() && auth()->user()->hasPermission('pos.sell', $hotel->id) || auth()->check() && auth()->user()->isSuperAdmin())) ||
+    (isset($canViewPayments) && $canViewPayments && (auth()->check() && auth()->user()->hasPermission('payments.create', $hotel->id) || auth()->check() && auth()->user()->isSuperAdmin())) ||
     (isset($canViewReports) && $canViewReports) ||
-    auth()->user()->isSuperAdmin()
+    auth()->check() && auth()->user()->isSuperAdmin()
 ))
 <!-- Quick Actions -->
 <div style="background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 30px;">
     <h3 style="color: #333; font-size: 18px; margin-bottom: 20px;">Quick Actions</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-        @if($hotel && isset($canViewBookings) && $canViewBookings && (auth()->user()->hasPermission('bookings.create', $hotel->id) || auth()->user()->isSuperAdmin()))
+        @if($hotel && isset($canViewBookings) && $canViewBookings && (auth()->check() && auth()->user()->hasPermission('bookings.create', $hotel->id) || auth()->check() && auth()->user()->isSuperAdmin()))
             <a href="{{ route('bookings.create') }}" style="display: block; padding: 15px; background: #667eea; color: white; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500;">
                 New Booking
             </a>
         @endif
-        @if($hotel && isset($canViewSales) && $canViewSales && (auth()->user()->hasPermission('pos.sell', $hotel->id) || auth()->user()->isSuperAdmin()))
+        @if($hotel && isset($canViewSales) && $canViewSales && (auth()->check() && auth()->user()->hasPermission('pos.sell', $hotel->id) || auth()->check() && auth()->user()->isSuperAdmin()))
             <a href="{{ route('pos-sales.create') }}" style="display: block; padding: 15px; background: #4caf50; color: white; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500;">
                 New POS Sale
             </a>
         @endif
-        @if($hotel && isset($canViewPayments) && $canViewPayments && (auth()->user()->hasPermission('payments.create', $hotel->id) || auth()->user()->isSuperAdmin()))
+        @if($hotel && isset($canViewPayments) && $canViewPayments && (auth()->check() && auth()->user()->hasPermission('payments.create', $hotel->id) || auth()->check() && auth()->user()->isSuperAdmin()))
             <a href="{{ route('payments.create') }}" style="display: block; padding: 15px; background: #ff9800; color: white; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500;">
                 Record Payment
             </a>
@@ -358,7 +358,7 @@
                 View Reports
             </a>
         @endif
-        @if(auth()->user()->isSuperAdmin())
+        @if(auth()->check() && auth()->user()->isSuperAdmin())
             <a href="{{ route('hotels.index') }}" style="display: block; padding: 15px; background: #9c27b0; color: white; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500;">
                 Manage Hotels
             </a>
@@ -593,7 +593,7 @@
                                style="padding: 6px 12px; background: #667eea; color: white; border-radius: 4px; text-decoration: none; font-size: 12px; white-space: nowrap;">
                                 View Details
                             </a>
-                            @if(auth()->user()->hasPermission('housekeeping_records.resolve', session('hotel_id')) || auth()->user()->isSuperAdmin())
+                            @if(auth()->check() && auth()->user()->hasPermission('housekeeping_records.resolve', session('hotel_id')) || auth()->check() && auth()->user()->isSuperAdmin())
                                 <a href="{{ route('housekeeping-records.show', $issue) }}#resolve" 
                                    style="padding: 6px 12px; background: #28a745; color: white; border-radius: 4px; text-decoration: none; font-size: 12px; white-space: nowrap;">
                                     Resolve

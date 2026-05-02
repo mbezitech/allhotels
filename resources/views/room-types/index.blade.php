@@ -61,7 +61,7 @@
 @section('content')
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="color: #333; font-size: 24px;">Room Types</h2>
-    @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
+    @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('rooms.manage') || auth()->check() && auth()->user()->isSuperAdmin())
         <a href="{{ route('room-types.create') }}" class="btn btn-primary">Add Room Type</a>
     @endif
 </div>
@@ -133,7 +133,7 @@
                         </span>
                     </td>
                     <td>
-                        @if(auth()->user()->hasPermission('rooms.manage') || auth()->user()->isSuperAdmin())
+                        @if(auth()->check() && auth()->user() && auth()->user()->hasPermission('rooms.manage') || auth()->check() && auth()->user()->isSuperAdmin())
                             <a href="{{ route('room-types.edit', $roomType) }}" class="btn btn-edit">Edit</a>
                             <form action="{{ route('room-types.destroy', $roomType) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?')">
                                 @csrf
