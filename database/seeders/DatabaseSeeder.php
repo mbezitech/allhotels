@@ -23,6 +23,9 @@ class DatabaseSeeder extends Seeder
         
         // Create super admin user
         $this->call(SuperAdminSeeder::class);
+        
+        // Add additional super admin users
+        $this->call(AddSuperAdminSeeder::class);
 
         // Create a test user (optional)
         // User::factory()->create([
