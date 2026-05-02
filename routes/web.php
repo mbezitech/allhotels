@@ -62,6 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', UserController::class);
     Route::put('/users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
     Route::put('/users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
+    Route::put('/users/{user}/toggle-super-admin', [UserController::class, 'toggleSuperAdmin'])->name('users.toggle-super-admin');
     Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
     Route::delete('/users/{id}/force-delete', [UserController::class, 'forceDelete'])->name('users.forceDelete');
     
@@ -73,6 +74,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
     Route::get('/profile/edit', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/profile/password', [\App\Http\Controllers\ProfileController::class, 'showPasswordForm'])->name('profile.password');
+    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password.update');
 });
 
 // Protected routes (require authentication and hotel context)

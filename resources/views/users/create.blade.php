@@ -116,7 +116,8 @@
         @if(auth()->user()->isSuperAdmin())
         <div class="form-group">
             <div class="checkbox-group">
-                <input type="checkbox" id="is_super_admin" name="is_super_admin" {{ old('is_super_admin') ? 'checked' : '' }}>
+                <input type="hidden" name="is_super_admin" value="0">
+                <input type="checkbox" id="is_super_admin" name="is_super_admin" value="1" {{ old('is_super_admin') ? 'checked' : '' }}>
                 <label for="is_super_admin" style="margin: 0; font-weight: normal;">Super Admin</label>
             </div>
             <small style="color: #666; display: block; margin-top: 5px;">Super admins have access to all hotels and can manage the system globally</small>

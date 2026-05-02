@@ -468,8 +468,11 @@
                         Manage Hotels
                     </a>
                 @endif
-                <a href="{{ route('profile.show') }}" style="color: #667eea; text-decoration: none; margin-right: 15px; font-weight: 500;">
+                <a href="{{ route('profile.show') }}" style="color: #667eea; text-decoration: none; margin-right: 10px; font-weight: 500;">
                     My Account
+                </a>
+                <a href="{{ route('profile.password') }}" style="color: #667eea; text-decoration: none; margin-right: 15px; font-size: 13px;">
+                    Change Password
                 </a>
                 <span class="user-name">{{ auth()->user()->name }}</span>
                 <form method="POST" action="{{ route('logout') }}" style="display: inline;">

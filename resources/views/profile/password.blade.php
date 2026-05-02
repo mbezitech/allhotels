@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Profile')
-@section('page-title', 'Edit Profile')
+@section('title', 'Change Password')
+@section('page-title', 'Change Password')
 
 @push('styles')
 <style>
@@ -10,6 +10,8 @@
         border-radius: 12px;
         padding: 30px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-width: 500px;
+        margin: 0 auto;
     }
     .form-group {
         margin-bottom: 20px;
@@ -79,38 +81,34 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('profile.update') }}">
+    <form method="POST" action="{{ route('profile.password.update') }}">
         @csrf
         @method('PUT')
 
         <div class="form-group">
-            <label for="name">Name *</label>
-            <input type="text" id="name" name="name" value="{{ old('name', $user->name) }}" required>
-            @error('name')
+            <label for="current_password">Current Password *</label>
+            <input type="password" id="current_password" name="current_password" required>
+            @error('current_password')
                 <span class="error">{{ $message }}</span>
             @enderror
         </div>
 
         <div class="form-group">
-            <label for="email">Email *</label>
-            <input type="email" id="email" name="email" value="{{ old('email', $user->email) }}" required>
-            @error('email')
+            <label for="password">New Password *</label>
+            <input type="password" id="password" name="password" minlength="8" required>
+            @error('password')
                 <span class="error">{{ $message }}</span>
             @enderror
         </div>
 
         <div class="form-group">
-            <label for="phone">Phone</label>
-            <input type="text" id="phone" name="phone" value="{{ old('phone', $user->phone) }}" placeholder="e.g., +1234567890">
-            @error('phone')
-                <span class="error">{{ $message }}</span>
-            @enderror
+            <label for="password_confirmation">Confirm New Password *</label>
+            <input type="password" id="password_confirmation" name="password_confirmation" minlength="8" required>
         </div>
 
         <div style="margin-top: 30px;">
-            <button type="submit" class="btn btn-primary">Update Profile</button>
+            <button type="submit" class="btn btn-primary">Change Password</button>
             <a href="{{ route('profile.show') }}" class="btn btn-secondary">Cancel</a>
-            <a href="{{ route('profile.password') }}" class="btn btn-secondary" style="margin-left: 10px;">Change Password</a>
         </div>
     </form>
 </div>

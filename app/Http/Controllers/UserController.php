@@ -195,7 +195,6 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'is_super_admin' => 'nullable|boolean',
             'hotel_id' => 'nullable|exists:hotels,id',
         ]);
 
@@ -304,89 +303,69 @@ class UserController extends Controller
     {
         $this->ensureCanManageUsers();
         
-        $currentUser = Auth::user();
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
-            'is_active' => 'nullable|boolean',
-            'is_super_admin' => 'nullable|boolean',
         ]);
 
+        // Handle password - only update if provided
         if ($request->filled('password')) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
         }
 
-        // Handle is_active - users with users.activate permission can change it
+        $currentUser = Auth::user();
+
+        // Handle is_active
         if ($currentUser->isSuperAdmin() || $currentUser->hasPermission('users.activate', session('hotel_id'))) {
-            // CRITICAL: Prevent users from disabling themselves through edit form
-            if ($user->id === $currentUser->id) {
-                // Never allow users to change their own is_active status
-                if ($request->has('is_active')) {
-                    $requestIsActive = $request->boolean('is_active');
-                    // If trying to disable themselves, block it
-                    if (!$requestIsActive || ($user->is_active && !$requestIsActive)) {
-                        \Log::warning("User {$currentUser->id} ({$currentUser->email}) attempted to disable their own account via edit form");
-                        return redirect()->route('users.edit', $user)
-                            ->with('error', 'You cannot disable your own account. This action is not allowed for security reasons.');
-                    }
-                }
-                // Remove is_active from validated data to prevent any changes
-                unset($validated['is_active']);
-            } else {
-                // For other users, allow is_active changes
-                $validated['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : ($user->is_active ?? true);
+            if ($user->id !== $currentUser->id) {
+                $validated['is_active'] = $request->boolean('is_active');
             }
-        } else {
-            // Non-authorized users cannot change active status
-            unset($validated['is_active']);
-        }
-        
-        // Only super admins can change super admin status
-        if ($currentUser->isSuperAdmin()) {
-            $validated['is_super_admin'] = $request->has('is_super_admin');
-        } else {
-            // Non-super admins cannot change super admin status
-            unset($validated['is_super_admin']);
         }
 
-        // Capture old values for logging
-        $oldValues = [
-            'name' => $user->name,
-            'email' => $user->email,
-            'is_active' => $user->is_active,
-            'is_super_admin' => $user->is_super_admin,
-        ];
-        
-        $user->update($validated);
-        
-        // Capture new values for logging
-        $user->refresh();
-        $newValues = [
-            'name' => $user->name,
-            'email' => $user->email,
-            'is_active' => $user->is_active,
-            'is_super_admin' => $user->is_super_admin,
-        ];
-        
-        // Log user update
-        $changedFields = [];
-        foreach ($oldValues as $key => $oldValue) {
-            if (isset($newValues[$key]) && $oldValue != $newValues[$key]) {
-                $changedFields[$key] = ['old' => $oldValue, 'new' => $newValues[$key]];
+        // Handle is_super_admin - only super admins can change this
+        if ($currentUser->isSuperAdmin()) {
+            if ($user->id !== $currentUser->id) {
+                $validated['is_super_admin'] = $request->boolean('is_super_admin');
             }
         }
-        
-        if (!empty($changedFields)) {
-            $fieldNames = implode(', ', array_keys($changedFields));
-            logActivity('updated', $user, "Updated user: {$user->name} - Changed: {$fieldNames}", null, $oldValues, $newValues);
-        }
+
+        $user->update($validated);
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully.');
+    }
+
+    /**
+     * Toggle user's super admin status
+     */
+    public function toggleSuperAdmin(User $user)
+    {
+        $this->ensureCanManageUsers();
+        
+        $currentUser = Auth::user();
+        
+        // Only super admins can change super admin status
+        if (!$currentUser->isSuperAdmin()) {
+            abort(403, 'Only super admins can change super admin status.');
+        }
+        
+        // Prevent removing own super admin status
+        if ($user->id === $currentUser->id && $user->is_super_admin) {
+            return redirect()->route('users.show', $user)
+                ->with('error', 'You cannot remove your own super admin status.');
+        }
+        
+        $oldStatus = $user->is_super_admin;
+        $user->update(['is_super_admin' => !$user->is_super_admin]);
+        
+        $action = $user->is_super_admin ? 'granted' : 'removed';
+        logActivity('updated', $user, "Super admin status {$action} for user: {$user->name}");
+
+        return redirect()->route('users.show', $user)
+            ->with('success', "Super admin status {$action} successfully.");
     }
 
     /**

@@ -52,19 +52,36 @@ class ProfileController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
-            'password' => 'nullable|string|min:8|confirmed',
         ]);
-
-        // Update password only if provided
-        if ($request->filled('password')) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
-        }
 
         $user->update($validated);
 
         return redirect()->route('profile.show')
             ->with('success', 'Profile updated successfully.');
+    }
+
+    /**
+     * Show the password change form
+     */
+    public function showPasswordForm()
+    {
+        return view('profile.password');
+    }
+
+    /**
+     * Update the user's password
+     */
+    public function updatePassword(Request $request)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user->update(['password' => Hash::make($validated['password'])]);
+
+        return redirect()->route('profile.show')
+            ->with('success', 'Password changed successfully.');
     }
 }

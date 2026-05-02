@@ -22,6 +22,17 @@ class AppServiceProvider extends ServiceProvider
         // Scope booking route model binding to current hotel
         \Illuminate\Support\Facades\Route::bind('booking', function ($value) {
             $hotelId = session('hotel_id');
+            $user = auth()->user();
+            
+            // Super admins can access any booking
+            if ($user && $user->isSuperAdmin()) {
+                $booking = \App\Models\Booking::find($value);
+                if (!$booking) {
+                    abort(404, 'Booking not found.');
+                }
+                return $booking;
+            }
+            
             if (!$hotelId) {
                 abort(403, 'No hotel context set. Please select a hotel to view bookings.');
             }
@@ -39,6 +50,17 @@ class AppServiceProvider extends ServiceProvider
         // Scope extraCategory route model binding to current hotel
         \Illuminate\Support\Facades\Route::bind('extraCategory', function ($value) {
             $hotelId = session('hotel_id');
+            $user = auth()->user();
+            
+            // Super admins can access any category
+            if ($user && $user->isSuperAdmin()) {
+                $category = \App\Models\ExtraCategory::find($value);
+                if (!$category) {
+                    abort(404, 'Category not found.');
+                }
+                return $category;
+            }
+            
             if (!$hotelId) {
                 abort(403, 'No hotel context set. Please select a hotel.');
             }
@@ -56,6 +78,17 @@ class AppServiceProvider extends ServiceProvider
         // Scope task route model binding to current hotel
         \Illuminate\Support\Facades\Route::bind('task', function ($value) {
             $hotelId = session('hotel_id');
+            $user = auth()->user();
+            
+            // Super admins can access any task
+            if ($user && $user->isSuperAdmin()) {
+                $task = \App\Models\Task::find($value);
+                if (!$task) {
+                    abort(404, 'Task not found.');
+                }
+                return $task;
+            }
+            
             if (!$hotelId) {
                 abort(403, 'No hotel context set. Please select a hotel to view tasks.');
             }
@@ -73,6 +106,17 @@ class AppServiceProvider extends ServiceProvider
         // Scope housekeepingRecord route model binding to current hotel
         \Illuminate\Support\Facades\Route::bind('housekeepingRecord', function ($value) {
             $hotelId = session('hotel_id');
+            $user = auth()->user();
+            
+            // Super admins can access any record
+            if ($user && $user->isSuperAdmin()) {
+                $record = \App\Models\HousekeepingRecord::find($value);
+                if (!$record) {
+                    abort(404, 'Housekeeping record not found.');
+                }
+                return $record;
+            }
+            
             if (!$hotelId) {
                 abort(403, 'No hotel context set. Please select a hotel to view housekeeping records.');
             }
@@ -90,6 +134,17 @@ class AppServiceProvider extends ServiceProvider
         // Scope hotelArea route model binding to current hotel
         \Illuminate\Support\Facades\Route::bind('hotelArea', function ($value) {
             $hotelId = session('hotel_id');
+            $user = auth()->user();
+            
+            // Super admins can access any area
+            if ($user && $user->isSuperAdmin()) {
+                $area = \App\Models\HotelArea::find($value);
+                if (!$area) {
+                    abort(404, 'Hotel area not found.');
+                }
+                return $area;
+            }
+            
             if (!$hotelId) {
                 abort(403, 'No hotel context set. Please select a hotel to manage areas.');
             }

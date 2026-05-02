@@ -110,10 +110,12 @@
             $canActivate = ($currentUser->isSuperAdmin() || $currentUser->hasPermission('users.activate', session('hotel_id')));
             $isEditingSelf = $user->id === $currentUser->id;
         @endphp
+
         @if($canActivate && !$isEditingSelf)
         <div class="form-group">
             <div class="checkbox-group">
-                <input type="checkbox" id="is_active" name="is_active" {{ old('is_active', $user->is_active ?? true) ? 'checked' : '' }}>
+                <input type="hidden" name="is_active" value="0">
+                <input type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', $user->is_active ?? true) ? 'checked' : '' }}>
                 <label for="is_active" style="margin: 0; font-weight: normal;">Active Account</label>
             </div>
             <small style="color: #666; display: block; margin-top: 5px;">Inactive users cannot login to the system</small>
@@ -135,7 +137,8 @@
         @if(auth()->user()->isSuperAdmin())
         <div class="form-group">
             <div class="checkbox-group">
-                <input type="checkbox" id="is_super_admin" name="is_super_admin" {{ old('is_super_admin', $user->is_super_admin) ? 'checked' : '' }}>
+                <input type="hidden" name="is_super_admin" value="0">
+                <input type="checkbox" id="is_super_admin" name="is_super_admin" value="1" {{ old('is_super_admin', $user->is_super_admin) ? 'checked' : '' }}>
                 <label for="is_super_admin" style="margin: 0; font-weight: normal;">Super Admin</label>
             </div>
             <small style="color: #666; display: block; margin-top: 5px;">Super admins have access to all hotels and can manage the system globally</small>

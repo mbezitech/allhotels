@@ -794,6 +794,13 @@ class BookingController extends Controller
         }
         
         $hotelId = session('hotel_id');
+        $user = auth()->user();
+        
+        // Super admins can access any booking
+        if ($user && $user->isSuperAdmin()) {
+            return;
+        }
+        
         if (!$hotelId) {
             abort(403, 'No hotel context set. Please select a hotel.');
         }

@@ -16,6 +16,7 @@
         display: flex;
         padding: 15px 0;
         border-bottom: 1px solid #eee;
+        align-items: center;
     }
     .info-label {
         font-weight: 600;
@@ -40,6 +41,14 @@
         background: #2196f3;
         color: white;
     }
+    .badge-active {
+        background: #4caf50;
+        color: white;
+    }
+    .badge-inactive {
+        background: #f44336;
+        color: white;
+    }
     .btn {
         padding: 10px 20px;
         border: none;
@@ -57,6 +66,21 @@
     .btn-secondary {
         background: #95a5a6;
         color: white;
+    }
+    .btn-success {
+        background: #4caf50;
+        color: white;
+    }
+    .btn-danger {
+        background: #f44336;
+        color: white;
+    }
+    .btn-warning {
+        background: #ff9800;
+        color: white;
+    }
+    .action-buttons {
+        margin-left: 15px;
     }
 </style>
 @endpush
@@ -77,8 +101,73 @@
     </div>
 
     <div class="info-row">
-        <div class="info-label">Email</div>
-        <div class="info-value">{{ $user->email }}</div>
+        <div class="info-label">User Status</div>
+        <div class="info-value">
+            @if($user->is_active)
+                <span class="badge badge-active">Active</span>
+            @else
+                <span class="badge badge-inactive">Inactive</span>
+            @endif
+            @can('users.activate')
+                @if($user->id !== auth()->id())
+                    <div class="action-buttons">
+                        @if($user->is_active)
+                            <form method="POST" action="{{ route('users.deactivate', $user) }}" style="display: inline;">
+                                @csrf
+                                @method('PUT')
+                                <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;">Deactivate</button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('users.activate', $user) }}" style="display: inline;">
+                                @csrf
+                                @method('PUT')
+                                <button type="submit" class="btn btn-success" style="padding: 5px 10px; font-size: 12px;">Activate</button>
+                            </form>
+                        @endif
+                    </div>
+                @endif
+            @endcan
+        </div>
+    </div>
+
+    <div class="info-row">
+        <div class="info-label">User Type</div>
+        <div class="info-value">
+            @if($user->is_super_admin)
+                <span class="badge badge-super-admin">Super Admin</span>
+                @if(auth()->user()->isSuperAdmin() && $user->id !== auth()->id())
+                    <div class="action-buttons">
+                        <form method="POST" action="{{ route('users.toggle-super-admin', $user) }}" style="display: inline;">
+                            @csrf
+                            @method('PUT')
+                            <button type="submit" class="btn btn-warning" style="padding: 5px 10px; font-size: 12px;">Remove Super Admin</button>
+                        </form>
+                    </div>
+                @endif
+            @elseif($user->ownedHotels->count() > 0)
+                <span class="badge badge-owner">Owner</span>
+                @if(auth()->user()->isSuperAdmin())
+                    <div class="action-buttons">
+                        <form method="POST" action="{{ route('users.toggle-super-admin', $user) }}" style="display: inline;">
+                            @csrf
+                            @method('PUT')
+                            <button type="submit" class="btn btn-warning" style="padding: 5px 10px; font-size: 12px;">Make Super Admin</button>
+                        </form>
+                    </div>
+                @endif
+            @else
+                <span style="color: #666;">Regular User</span>
+                @if(auth()->user()->isSuperAdmin())
+                    <div class="action-buttons">
+                        <form method="POST" action="{{ route('users.toggle-super-admin', $user) }}" style="display: inline;">
+                            @csrf
+                            @method('PUT')
+                            <button type="submit" class="btn btn-warning" style="padding: 5px 10px; font-size: 12px;">Make Super Admin</button>
+                        </form>
+                    </div>
+                @endif
+            @endif
+        </div>
     </div>
 
     <div class="info-row">
