@@ -15,16 +15,17 @@ class SuperAdminSeeder extends Seeder
     {
         // Create super admin user
         User::firstOrCreate(
-            ['email' => 'admin@hotels.com'],
+            ['email' => 'superadmin@allhotels.com'],
             [
                 'name' => 'Super Admin',
-                'password' => Hash::make('admin123'),
+                'password' => Hash::make('SuperAdmin2026!'),
                 'is_super_admin' => true,
+                'is_active' => true,
             ]
         );
 
-        $this->command->info('Super Admin user created!');
-        $this->command->info('Email: admin@hotels.com');
-        $this->command->info('Password: admin123');
+        $this->command->info('Super Admin user created successfully!');
+        $this->command->info('Username: superadmin@allhotels.com');
+        $this->command->info('Password: SuperAdmin2026!');
     }
 }
