@@ -474,7 +474,9 @@
                 <a href="{{ route('profile.password') }}" style="color: #667eea; text-decoration: none; margin-right: 15px; font-size: 13px;">
                     Change Password
                 </a>
+                @if(auth()->check())
                 <span class="user-name">{{ auth()->user()->name }}</span>
+                @endif
                 <form method="POST" action="{{ route('logout') }}" style="display: inline;">
                     @csrf
                     <button type="submit" class="logout-btn">Logout</button>
