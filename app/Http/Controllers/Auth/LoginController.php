@@ -55,53 +55,31 @@ class LoginController extends Controller
             ]);
         }
 
-        // If super admin, send OTP and redirect to OTP verification
-        if ($user->isSuperAdmin()) {
-            Auth::logout();
-            $otp = rand(100000, 999999);
-            \App\Models\Otp::create([
-                'user_id' => $user->id,
-                'code' => $otp,
-                'expires_at' => now()->addMinutes(10),
-                'used' => false,
-            ]);
-            
-            // Send OTP via email (with error handling)
-            try {
-                \Illuminate\Support\Facades\Mail::raw("Your OTP code is: {$otp}", function ($message) use ($user) {
-                    $message->to($user->email)
-                            ->subject('Super Admin Login OTP');
-                });
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('OTP email failed: ' . $e->getMessage());
+        // Super admins can login without OTP
+        if (!$user->isSuperAdmin()) {
+            // Regular users must select a hotel
+            if (!$hotelId) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'hotel_id' => 'Please select a hotel to continue.',
+                ]);
             }
-            
-            Session::put('otp_user_id', $user->id);
-            Session::put('otp_hotel_id', $hotelId);
-            return redirect()->route('otp.show');
+
+            // Check if user has access to the selected hotel
+            $hasAccess = $user->hasAccessToHotel($hotelId);
+
+            if (!$hasAccess) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'hotel_id' => 'You do not have access to this hotel.',
+                ]);
+            }
         }
 
-        // Regular users must select a hotel
-        if (!$hotelId) {
-            Auth::logout();
-            throw ValidationException::withMessages([
-                'hotel_id' => 'Please select a hotel to continue.',
-            ]);
+        // Set hotel context in session (optional for super admins)
+        if ($hotelId) {
+            Session::put('hotel_id', $hotelId);
         }
-
-        // Check if user has access to the selected hotel
-        // This method also handles hotel owners automatically
-        $hasAccess = $user->hasAccessToHotel($hotelId);
-
-        if (!$hasAccess) {
-            Auth::logout();
-            throw ValidationException::withMessages([
-                'hotel_id' => 'You do not have access to this hotel.',
-            ]);
-        }
-
-        // Set hotel context in session
-        Session::put('hotel_id', $hotelId);
 
         // Regenerate session for security
         $request->session()->regenerate();

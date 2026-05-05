@@ -106,6 +106,18 @@ class UserRoleController extends Controller
      */
     public function store(Request $request)
     {
+        $hotelId = session('hotel_id');
+        
+        // For super admins, allow hotel selection via request parameter
+        if (auth()->user()->isSuperAdmin() && $request->has('hotel_id')) {
+            $hotelId = $request->get('hotel_id');
+            session(['hotel_id' => $hotelId]);
+        }
+        
+        if (!$hotelId) {
+            return back()->with('error', 'Please select a hotel.');
+        }
+
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'role_id' => 'required|exists:roles,id',
@@ -118,18 +130,6 @@ class UserRoleController extends Controller
             
         if (!$role) {
             return back()->with('error', 'Selected role does not belong to this hotel.');
-        }
-
-        $hotelId = session('hotel_id');
-        
-        // For super admins, allow hotel selection via request parameter
-        if (auth()->user()->isSuperAdmin() && $request->has('hotel_id')) {
-            $hotelId = $request->get('hotel_id');
-            session(['hotel_id' => $hotelId]);
-        }
-        
-        if (!$hotelId) {
-            return back()->with('error', 'Please select a hotel.');
         }
 
         // Check if user already has this role in this hotel
